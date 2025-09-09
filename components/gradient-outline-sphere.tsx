@@ -4,15 +4,12 @@ import type React from "react"
 import { useRef, useEffect, useState, useCallback } from "react"
 import * as THREE from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
-import { generateMockData } from "@/lib/data-generator"
 import { ProfileModal } from "@/components/profile-modal"
 import type { LifeTrajectory } from "@/lib/data-generator"
-import { ZoomIn, ZoomOut, AlertTriangle } from "lucide-react"
+import { ZoomIn, ZoomOut, AlertTriangle, RefreshCw } from "lucide-react"
 import { useLifeTrajectoryStore } from "@/lib/store"
 import { SearchInput } from "@/components/search-input"
 import { Counter } from "@/components/counter"
-
-const trajectoryData = generateMockData(400)
 
 const COLORS = {
   darkBlue: new THREE.Color("#1a2b4d"),
@@ -37,7 +34,7 @@ function isInProtectedZone(x: number, y: number): boolean {
   if (x < 200 && y < 100) return true
 
   // Zone en haut à droite (recherche et zoom)
-  if (x > window.innerWidth - 350 && y < 100) return true
+  if (x > window.innerWidth - 400 && y < 100) return true
 
   return false
 }
@@ -65,7 +62,19 @@ export default function GradientOutlineSphere() {
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
   const controlsRef = useRef<OrbitControls | null>(null)
   const sphereGroupRef = useRef<THREE.Group | null>(null)
-  const { setSelectedPerson, filteredTrajectories, searchQuery } = useLifeTrajectoryStore()
+
+  // États du store
+  const {
+    setSelectedPerson,
+    filteredTrajectories,
+    searchQuery,
+    trajectoryData,
+    isLoadingData,
+    apiError,
+    loadTrajectories,
+    refreshData,
+  } = useLifeTrajectoryStore()
+
   // État pour le chargement des montagnes
   const [isUpdatingMountains, setIsUpdatingMountains] = useState(false)
   // Nouvel état pour les erreurs de filtrage
@@ -73,9 +82,14 @@ export default function GradientOutlineSphere() {
   // État pour suivre si le filtrage est actif
   const [isFilterActive, setIsFilterActive] = useState(false)
   // Référence pour éviter les mises à jour inutiles
-  const lastFilteredCountRef = useRef<number>(trajectoryData.length)
+  const lastFilteredCountRef = useRef<number>(0)
   // Référence pour le timeout de debounce
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Charger les données au montage du composant
+  useEffect(() => {
+    loadTrajectories()
+  }, [loadTrajectories])
 
   const resetHighlight = useCallback(() => {
     if (!hoveredGroupRef.current) return
@@ -208,11 +222,14 @@ export default function GradientOutlineSphere() {
         setIsUpdatingMountains(false)
       }
     },
-    [clearMountains, isRendering],
+    [clearMountains, isRendering, trajectoryData],
   )
 
   // Effet pour surveiller les changements dans filteredTrajectories et mettre à jour les montagnes
   useEffect(() => {
+    // Ne pas mettre à jour si les données sont en cours de chargement
+    if (isLoadingData) return
+
     // Éviter les mises à jour inutiles
     if (
       lastFilteredCountRef.current === filteredTrajectories.length &&
@@ -242,11 +259,11 @@ export default function GradientOutlineSphere() {
         clearTimeout(updateTimeoutRef.current)
       }
     }
-  }, [filteredTrajectories, searchQuery, updateMountains])
+  }, [filteredTrajectories, searchQuery, updateMountains, isLoadingData, trajectoryData.length])
 
   function createGradientOutlineMountainsOnSphere(parent: THREE.Group) {
     const radius = 5
-    // Utiliser la nouvelle fonction avec trajectoryData comme argument
+    // Utiliser les données du store au lieu de données générées
     addTrajectoryMountains(parent, radius, trajectoryData)
   }
 
@@ -356,6 +373,13 @@ export default function GradientOutlineSphere() {
     e.preventDefault()
   }
 
+  // Fonction pour rafraîchir les données
+  const handleRefreshData = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    await refreshData()
+  }
+
   useEffect(() => {
     if (!containerRef.current) return
 
@@ -456,11 +480,21 @@ export default function GradientOutlineSphere() {
     const sphereWireframe = new THREE.LineSegments(sphereEdges, sphereMaterial)
     sphereGroup.add(sphereWireframe)
 
-    try {
-      createGradientOutlineMountainsOnSphere(sphereGroup)
-    } catch (error) {
-      console.error("Erreur lors de la création des montagnes:", error)
+    // Attendre que les données soient chargées avant de créer les montagnes
+    const checkDataAndCreateMountains = () => {
+      if (trajectoryData.length > 0) {
+        try {
+          createGradientOutlineMountainsOnSphere(sphereGroup)
+        } catch (error) {
+          console.error("Erreur lors de la création des montagnes:", error)
+        }
+      } else {
+        // Réessayer dans 100ms si les données ne sont pas encore chargées
+        setTimeout(checkDataAndCreateMountains, 100)
+      }
     }
+
+    checkDataAndCreateMountains()
 
     const controls = new OrbitControls(camera, renderer.domElement)
     controls.enablePan = false
@@ -768,7 +802,7 @@ export default function GradientOutlineSphere() {
         clearTimeout(updateTimeoutRef.current)
       }
     }
-  }, [clearMountains, resetHighlight])
+  }, [clearMountains, resetHighlight, trajectoryData])
 
   useEffect(() => {
     if (selectedTrajectory) {
@@ -1162,13 +1196,27 @@ export default function GradientOutlineSphere() {
           <Counter />
         </div>
 
-        {/* Barre de recherche et zoom en haut à droite */}
+        {/* Barre de recherche, bouton refresh et zoom en haut à droite */}
         <div
           className="absolute top-4 right-4 flex items-center gap-3 pointer-events-auto"
           style={{ isolation: "isolate" }}
           data-ui-element="true"
         >
           <SearchInput onMouseDown={handleUIEvent} onMouseMove={handleUIEvent} />
+
+          {/* Bouton de rafraîchissement des données */}
+          <button
+            onClick={handleRefreshData}
+            onMouseDown={handleUIEvent}
+            onMouseMove={handleUIEvent}
+            disabled={isLoadingData}
+            className="w-10 h-10 bg-black/50 backdrop-blur-sm text-white rounded-full hover:bg-black/60 transition-colors shadow-lg border border-white/20 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Actualiser les données"
+            data-ui-element="true"
+          >
+            <RefreshCw size={20} className={isLoadingData ? "animate-spin" : ""} />
+          </button>
+
           <button
             onClick={(e) => {
               e.preventDefault()
@@ -1197,6 +1245,17 @@ export default function GradientOutlineSphere() {
         </div>
       </div>
 
+      {/* Message d'erreur API */}
+      {apiError && (
+        <div
+          className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-red-900/70 backdrop-blur-sm text-white px-4 py-2 rounded-lg flex items-center gap-2 z-50 pointer-events-none"
+          style={{ maxWidth: "90vw" }}
+        >
+          <AlertTriangle size={16} className="text-red-400" />
+          <span className="text-sm">Erreur API: {apiError}</span>
+        </div>
+      )}
+
       {/* Message d'erreur de filtrage */}
       {filterError && (
         <div
@@ -1209,11 +1268,13 @@ export default function GradientOutlineSphere() {
       )}
 
       {/* Indicateur de chargement pendant la mise à jour des montagnes */}
-      {isUpdatingMountains && (
+      {(isUpdatingMountains || isLoadingData) && (
         <div className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none">
           <div className="bg-black/70 backdrop-blur-sm rounded-lg p-4 flex items-center space-x-3">
             <div className="w-5 h-5 border-2 border-t-white border-r-white border-b-transparent border-l-transparent rounded-full animate-spin"></div>
-            <span className="text-white text-sm">Mise à jour en cours...</span>
+            <span className="text-white text-sm">
+              {isLoadingData ? "Chargement des données..." : "Mise à jour en cours..."}
+            </span>
           </div>
         </div>
       )}
