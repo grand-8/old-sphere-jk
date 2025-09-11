@@ -52,24 +52,18 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
       formatter: (params: any) => {
         const labels = ["Début parcours", "Début Jobtrek", "Impact final"]
         const isMist = params.seriesName === "MIST Jobtrek"
-        const data = isMist ? statistics?.impactCharts.mistJobtrek : statistics?.impactCharts.jobtrekSchool
 
         if (params.dataIndex === 0) {
-          return `${labels[params.dataIndex]} (${params.seriesName})<br/>Score: ${params.value.toFixed(1)}`
+          return `${labels[params.dataIndex]} (${params.seriesName})`
         } else if (params.dataIndex === 1) {
-          const startValue = isMist
-            ? statistics?.impactCharts.mistJobtrek.startAvg
-            : statistics?.impactCharts.jobtrekSchool.startAvg
-          const progression = startValue !== 0 ? ((params.value - startValue) / startValue) * 100 : 0
-          const sign = progression > 0 ? "+" : ""
-          return `${labels[params.dataIndex]} (${params.seriesName})<br/>Score: ${params.value.toFixed(1)}<br/>${sign}${progression.toFixed(1)}% depuis le début`
+          return `${labels[params.dataIndex]} (${params.seriesName})`
         } else {
           const jobtrekValue = isMist
             ? statistics?.impactCharts.mistJobtrek.jobtrekAvg
             : statistics?.impactCharts.jobtrekSchool.jobtrekAvg
           const progression = jobtrekValue !== 0 ? ((params.value - jobtrekValue) / jobtrekValue) * 100 : 0
           const sign = progression > 0 ? "+" : ""
-          return `${labels[params.dataIndex]} (${params.seriesName})<br/>Score: ${params.value.toFixed(1)}<br/>${sign}${progression.toFixed(1)}% depuis Jobtrek`
+          return `${labels[params.dataIndex]} (${params.seriesName})<br/>${sign}${progression.toFixed(1)}% depuis Jobtrek`
         }
       },
     },
@@ -90,7 +84,7 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
     },
     xAxis: {
       type: "category",
-      data: ["Début", "Jobtrek", "Final"],
+      data: ["Début", "Jobtrek", "Après Jobtrek"],
       axisLine: { lineStyle: { color: "#374151" } },
       axisTick: { lineStyle: { color: "#374151" } },
       axisLabel: { color: "#9ca3af", fontSize: 12 },
@@ -219,6 +213,23 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
         <div className="p-6">
           {/* Grille 2x2 pour les 2 premières statistiques */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+{/* Section 2 : Amélioration moyenne */}
+            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+              <div className="text-gray-400 text-sm mb-4">Amélioration moyenne</div>
+              <div className="h-32 flex flex-col items-center justify-center">
+                <div
+                  className={`text-4xl font-bold mb-3 ${
+                    statistics.improvementPercentage >= 0 ? "text-green-400" : "text-red-400"
+                  }`}
+                >
+                  {statistics.improvementPercentage > 0 ? "+" : ""}
+                  {statistics.improvementPercentage.toFixed(1)}%
+                </div>
+                <div className="text-gray-300 text-center mb-4">d'amélioration moyenne après intervention Jobtrek</div>
+              </div>
+            </div>
+
+
             {/* Section 1 : Parcours post-Jobtrek */}
             <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
               <div className="text-gray-400 text-sm mb-4">Parcours post-Jobtrek</div>
@@ -250,21 +261,7 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
               </div>
             </div>
 
-            {/* Section 2 : Amélioration moyenne */}
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
-              <div className="text-gray-400 text-sm mb-4">Amélioration moyenne</div>
-              <div className="h-32 flex flex-col items-center justify-center">
-                <div
-                  className={`text-4xl font-bold mb-2 ${
-                    statistics.improvementPercentage >= 0 ? "text-green-400" : "text-red-400"
-                  }`}
-                >
-                  {statistics.improvementPercentage > 0 ? "+" : ""}
-                  {statistics.improvementPercentage.toFixed(1)}%
-                </div>
-                <div className="text-gray-300 text-center mb-4">d'amélioration moyenne après intervention Jobtrek</div>
-              </div>
-            </div>
+            
           </div>
 
           <div className="mb-6">
