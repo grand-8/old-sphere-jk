@@ -11,6 +11,10 @@ export interface JobtrekStatistics {
   topPostJobtrekEvents: Array<{ event: string; percentage: number }>
   measureDistribution: { mistJobtrek: number; jobtrekSchool: number; total: number }
   simpleComparison: { beforeAvg: number; afterAvg: number }
+  impactCharts: {
+    mistJobtrek: { startAvg: number; jobtrekAvg: number; finalAvg: number }
+    jobtrekSchool: { startAvg: number; jobtrekAvg: number; finalAvg: number }
+  }
 }
 
 // Fonction pour détecter si un événement est lié à Jobtrek
@@ -76,6 +80,10 @@ export function calculateJobtrekStatistics(trajectories: LifeTrajectory[]): Jobt
       topPostJobtrekEvents: [],
       measureDistribution: { mistJobtrek: 0, jobtrekSchool: 0, total: 0 },
       simpleComparison: { beforeAvg: 0, afterAvg: 0 },
+      impactCharts: {
+        mistJobtrek: { startAvg: 0, jobtrekAvg: 0, finalAvg: 0 },
+        jobtrekSchool: { startAvg: 0, jobtrekAvg: 0, finalAvg: 0 },
+      },
     }
   }
 
@@ -94,12 +102,16 @@ export function calculateJobtrekStatistics(trajectories: LifeTrajectory[]): Jobt
   // 5. Calculer la comparaison simple
   const simpleComparison = calculateSimpleBeforeAfter(trajectoriesWithJobtrek)
 
+  // 6. Calculer les graphiques d'impact séparés
+  const impactCharts = calculateSeparateImpactCharts(trajectoriesWithJobtrek)
+
   return {
     improvementPercentage,
     progressionBreakdown,
     topPostJobtrekEvents,
     measureDistribution,
     simpleComparison,
+    impactCharts,
   }
 }
 
@@ -254,5 +266,60 @@ function calculateProgressionBreakdown(trajectories: LifeTrajectory[]): {
     stagnationPercentage,
     regressionPercentage,
     totalCount,
+  }
+}
+
+function calculateSeparateImpactCharts(trajectories: LifeTrajectory[]): {
+  mistJobtrek: { startAvg: number; jobtrekAvg: number; finalAvg: number }
+  jobtrekSchool: { startAvg: number; jobtrekAvg: number; finalAvg: number }
+} {
+  const mistTrajectories = trajectories.filter((trajectory) =>
+    trajectory.points.some((p) => p.event.includes("Mesure MISt Jobtrek")),
+  )
+
+  const schoolTrajectories = trajectories.filter(
+    (trajectory) =>
+      trajectory.points.some((p) => p.event.includes("JobtrekSchool")) &&
+      !trajectory.points.some((p) => p.event.includes("Mesure MISt Jobtrek")),
+  )
+
+  const calculateAverages = (trajectories: LifeTrajectory[]) => {
+    if (trajectories.length === 0) return { startAvg: 0, jobtrekAvg: 0, finalAvg: 0 }
+
+    let totalStart = 0,
+      totalJobtrek = 0,
+      totalFinal = 0
+    let validCount = 0
+
+    trajectories.forEach((trajectory) => {
+      const firstJobtrekYear = findFirstJobtrekYear(trajectory)
+      if (!firstJobtrekYear) return
+
+      // 1. Score au début du parcours (premier point)
+      const startScore = trajectory.points[0]?.cumulativeScore || 0
+
+      // 2. Score au moment de Jobtrek
+      const jobtrekPoint = trajectory.points.find((p) => p.year === firstJobtrekYear && isJobtrekEvent(p.event))
+      if (!jobtrekPoint) return
+
+      // 3. Score final (dernier point)
+      const finalScore = trajectory.points[trajectory.points.length - 1]?.cumulativeScore || 0
+
+      totalStart += startScore
+      totalJobtrek += jobtrekPoint.cumulativeScore
+      totalFinal += finalScore
+      validCount++
+    })
+
+    return {
+      startAvg: validCount > 0 ? totalStart / validCount : 0,
+      jobtrekAvg: validCount > 0 ? totalJobtrek / validCount : 0,
+      finalAvg: validCount > 0 ? totalFinal / validCount : 0,
+    }
+  }
+
+  return {
+    mistJobtrek: calculateAverages(mistTrajectories),
+    jobtrekSchool: calculateAverages(schoolTrajectories),
   }
 }

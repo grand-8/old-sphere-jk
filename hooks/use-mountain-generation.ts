@@ -113,6 +113,13 @@ export function useMountainGeneration(
       const randomYAngle = ((Math.random() - 0.5) * Math.PI) / 32
       randomRotationGroup.rotateX(randomXAngle)
       randomRotationGroup.rotateY(randomYAngle)
+
+      const rotationSpeed = 0.003 + Math.random() * 0.004 // Random rotation speed between 0.003 and 0.007 (plus visible)
+      const rotationAxisName = Math.random() < 0.33 ? "x" : Math.random() < 0.5 ? "y" : "z" // Ajout de l'axe Z pour plus de variété
+      randomRotationGroup.userData.rotationSpeed = rotationSpeed
+      randomRotationGroup.userData.rotationAxis = rotationAxisName
+      randomRotationGroup.userData.isRotatingPeak = true
+
       mountainGroup.add(randomRotationGroup)
 
       const height = config.maxHeight
