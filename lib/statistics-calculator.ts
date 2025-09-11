@@ -207,7 +207,11 @@ export function calculateIndividualImprovement(trajectory: LifeTrajectory): numb
   const jobtrekScore = jobtrekPoint.cumulativeScore
   const finalScore = afterPoints[afterPoints.length - 1].cumulativeScore
 
-  if (jobtrekScore === 0) return 0
+  if (jobtrekScore === 0) {
+    // Si le score de départ est 0, calculer la différence absolue comme pourcentage
+    // Utiliser une base de 1 pour éviter la division par zéro tout en montrant la régression
+    return finalScore < 0 ? Math.round(finalScore * 100) : Math.round(finalScore * 100)
+  }
 
   const improvement = ((finalScore - jobtrekScore) / Math.abs(jobtrekScore)) * 100
 
