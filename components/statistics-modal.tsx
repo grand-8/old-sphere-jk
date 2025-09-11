@@ -258,11 +258,34 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
                   {statistics.improvementPercentage > 0 ? "+" : ""}
                   {statistics.improvementPercentage.toFixed(1)}%
                 </div>
-                <div className="text-gray-300 text-center">
+                <div className="text-gray-300 text-center mb-4">
                   {statistics.improvementPercentage >= 0 ? "d'amélioration" : "de baisse"} moyenne après intervention
                   Jobtrek
                 </div>
-                <div className="text-gray-500 text-sm mt-2">Basé sur les données transmises par les utilisateurs</div>
+
+                <div className="text-gray-400 text-sm mb-2 font-medium text-left w-full">Parcours post-Jobtrek</div>
+                <div className="flex items-center justify-center space-x-4">
+                  <div className="text-center">
+                    <div className="text-green-400 font-bold text-lg">
+                      {statistics.progressionBreakdown.progressionPercentage}%
+                    </div>
+                    <div className="text-gray-400 text-xs">Progression</div>
+                  </div>
+                  <div className="w-px h-8 bg-gray-600"></div>
+                  <div className="text-center">
+                    <div className="text-yellow-400 font-bold text-lg">
+                      {statistics.progressionBreakdown.stagnationPercentage}%
+                    </div>
+                    <div className="text-gray-400 text-xs">Stagnation</div>
+                  </div>
+                  <div className="w-px h-8 bg-gray-600"></div>
+                  <div className="text-center">
+                    <div className="text-red-400 font-bold text-lg">
+                      {statistics.progressionBreakdown.regressionPercentage}%
+                    </div>
+                    <div className="text-gray-400 text-xs">Régression</div>
+                  </div>
+                </div>
               </div>
             </div>
 

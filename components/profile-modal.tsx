@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { X } from "lucide-react"
 import type { LifeTrajectory } from "@/lib/data-service"
 import {
@@ -28,19 +28,25 @@ interface ProfileModalProps {
 export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const { canvasRef, isReady } = useMiniMountain(trajectory)
+  const [isClosing, setIsClosing] = useState(false)
+
+  const handleClose = () => {
+    console.log("[v0] Modal close debug - handleClose called")
+    console.log("[v0] Modal close debug - Current trajectory:", trajectory?.userCode)
+    setIsClosing(true)
+    onClose()
+  }
 
   useEffect(() => {
-    // Fermer le modal lorsque l'utilisateur clique en dehors
     const handleClickOutside = (event: MouseEvent) => {
       if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-        onClose()
+        handleClose()
       }
     }
 
-    // Fermer le modal lorsque l'utilisateur appuie sur Échap
     const handleEscKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        onClose()
+        handleClose()
       }
     }
 
@@ -51,11 +57,10 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
       document.removeEventListener("mousedown", handleClickOutside)
       document.removeEventListener("keydown", handleEscKey)
     }
-  }, [onClose])
+  }, [])
 
   if (!trajectory) return null
 
-  // Déterminer la couleur en fonction de la catégorie
   const getCategoryColor = () => {
     switch (trajectory.category) {
       case "education":
@@ -71,17 +76,15 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
     }
   }
 
-  // Vérifier si un événement concerne Jobtrek
   const isJobtrekEvent = (eventName: string) => {
     return eventName.includes("Mesure MISt Jobtrek") || eventName.includes("JobtrekSchool")
   }
 
   const getStepStatus = (point: any, index: number, allPoints: any[]) => {
-    // Vérifier si le champ "termine" existe et est explicitement "false"
     const isNotCompleted = point.termine === false || point.termine === "false"
 
     if (!isNotCompleted) {
-      return null // Ne rien afficher si "true" ou "null"
+      return null
     }
 
     const isLastStep = index === allPoints.length - 1
@@ -110,23 +113,83 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
       }
     })
 
+    const jobtrekIndex = formattedData.findIndex((d) => d.isJobtrek)
+    let postJobtrekColor = "#22C55E"
+
+    if (jobtrekIndex !== -1 && jobtrekIndex < formattedData.length - 1) {
+      const jobtrekScore = formattedData[jobtrekIndex].y
+      const finalScore = formattedData[formattedData.length - 1].y
+
+      if (finalScore > jobtrekScore) {
+        postJobtrekColor = "#22C55E"
+      } else if (finalScore < jobtrekScore) {
+        postJobtrekColor = "#ea580c"
+      }
+    }
+
+    const datasets = []
+
+    if (jobtrekIndex !== -1 && jobtrekIndex < formattedData.length - 1) {
+      datasets.push({
+        data: formattedData.slice(0, jobtrekIndex + 1).map((d) => d.y),
+        borderColor: "#ffffff",
+        backgroundColor: "#ffffff",
+        borderWidth: 3,
+        pointBackgroundColor: formattedData
+          .slice(0, jobtrekIndex + 1)
+          .map((d) => (d.isJobtrek ? "#22C55E" : "#ffffff")),
+        pointBorderColor: formattedData.slice(0, jobtrekIndex + 1).map((d) => (d.isJobtrek ? "#ffffff" : "#9ca3af")),
+        pointBorderWidth: 2,
+        pointRadius: formattedData.slice(0, jobtrekIndex + 1).map((d) => (d.isJobtrek ? 6 : 4)),
+        pointHoverRadius: 8,
+        tension: 0,
+        fill: false,
+      })
+
+      datasets.push({
+        data: [
+          ...Array(jobtrekIndex).fill(null),
+          formattedData[jobtrekIndex].y,
+          ...formattedData.slice(jobtrekIndex + 1).map((d) => d.y),
+        ],
+        borderColor: postJobtrekColor,
+        backgroundColor: postJobtrekColor,
+        borderWidth: 3,
+        pointBackgroundColor: [
+          ...Array(jobtrekIndex).fill("transparent"),
+          "transparent",
+          ...formattedData.slice(jobtrekIndex + 1).map(() => "#ffffff"),
+        ],
+        pointBorderColor: [
+          ...Array(jobtrekIndex).fill("transparent"),
+          "transparent",
+          ...formattedData.slice(jobtrekIndex + 1).map(() => "#9ca3af"),
+        ],
+        pointBorderWidth: 2,
+        pointRadius: [...Array(jobtrekIndex).fill(0), 0, ...formattedData.slice(jobtrekIndex + 1).map(() => 4)],
+        pointHoverRadius: 8,
+        tension: 0,
+        fill: false,
+      })
+    } else {
+      datasets.push({
+        data: formattedData.map((d) => d.y),
+        borderColor: "#22C55E",
+        backgroundColor: "#22C55E",
+        borderWidth: 3,
+        pointBackgroundColor: formattedData.map((d) => (d.isJobtrek ? "#22C55E" : "#ffffff")),
+        pointBorderColor: formattedData.map((d) => (d.isJobtrek ? "#ffffff" : "#9ca3af")),
+        pointBorderWidth: 2,
+        pointRadius: formattedData.map((d) => (d.isJobtrek ? 6 : 4)),
+        pointHoverRadius: 8,
+        tension: 0,
+        fill: false,
+      })
+    }
+
     return {
       labels: formattedData.map((d) => d.x),
-      datasets: [
-        {
-          data: formattedData.map((d) => d.y),
-          borderColor: "#22C55E",
-          backgroundColor: "#22C55E",
-          borderWidth: 3,
-          pointBackgroundColor: formattedData.map((d) => (d.isJobtrek ? "#22C55E" : "#ffffff")),
-          pointBorderColor: formattedData.map((d) => (d.isJobtrek ? "#ffffff" : "#9ca3af")),
-          pointBorderWidth: 2,
-          pointRadius: formattedData.map((d) => (d.isJobtrek ? 6 : 4)),
-          pointHoverRadius: 8,
-          tension: 0,
-          fill: false,
-        },
-      ],
+      datasets,
       rawData: formattedData,
     }
   }
@@ -136,11 +199,18 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
   const chartOptions: ChartOptions<"line"> = {
     responsive: true,
     maintainAspectRatio: false,
+    animation: isClosing
+      ? false
+      : {
+          duration: 750,
+          easing: "easeInOutQuart",
+        },
     plugins: {
       legend: {
         display: false,
       },
       tooltip: {
+        enabled: !isClosing,
         backgroundColor: "rgba(17, 24, 39, 0.95)",
         titleColor: "#ffffff",
         bodyColor: "#e5e7eb",
@@ -150,10 +220,20 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
         padding: 12,
         displayColors: false,
         titleFont: {
-          size: 16, // Augmenté de ~20% (base ~13px)
+          size: 16,
         },
         bodyFont: {
-          size: 15, // Augmenté de ~20% (base ~12px)
+          size: 15,
+        },
+        filter: (tooltipItem) => {
+          const datasetIndex = tooltipItem.datasetIndex
+          const pointIndex = tooltipItem.dataIndex
+          const datasets = tooltipItem.chart.data.datasets
+
+          if (datasetIndex === 0) return true
+
+          const firstDatasetValue = datasets[0].data[pointIndex]
+          return firstDatasetValue === null || firstDatasetValue === undefined
         },
         callbacks: {
           title: (context) => {
@@ -165,9 +245,12 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
             const data = chartData.rawData[index]
             const point = trajectory.points[index]
 
+            console.log("[v0] Tooltip debug - Event:", data.event)
+            console.log("[v0] Tooltip debug - Dataset index:", context.datasetIndex)
+            console.log("[v0] Tooltip debug - Point index:", index)
+
             const lines = [data.event]
 
-            // Ajouter le statut si applicable
             const stepStatus = getStepStatus(point, index, trajectory.points)
             if (stepStatus) {
               if (stepStatus.type === "non-termine") {
@@ -177,11 +260,15 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
               }
             }
 
-            // Ajouter Jobtrek sur une ligne séparée
-            if (data.isJobtrek) {
+            const eventLower = data.event.toLowerCase()
+            const shouldAddJobtrekLabel =
+              data.isJobtrek && !eventLower.includes("jobtrek") && !eventLower.includes("mist jobtrek")
+
+            if (shouldAddJobtrekLabel) {
               lines.push("🟢 Jobtrek")
             }
 
+            console.log("[v0] Tooltip debug - Final lines:", lines)
             return lines
           },
         },
@@ -204,7 +291,7 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
         },
       },
       y: {
-        display: false, // Hide Y axis as requested
+        display: false,
         grid: {
           display: false,
         },
@@ -216,16 +303,12 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
     },
   }
 
-  // Calculer le nombre d'étapes (nombre de points)
   const numberOfSteps = trajectory.points.length
 
-  // Générer un code utilisateur si pas disponible
   const userCode = trajectory.userCode || `J${trajectory.id.substring(0, 3).toUpperCase()}`
 
-  // Obtenir le nom de la mesure (typeMesure ou catégorie par défaut)
   const measureName = trajectory.typeMesure || trajectory.category
 
-  // Calculer l'amélioration individuelle post-Jobtrek
   const individualImprovement = calculateIndividualImprovement(trajectory)
 
   return (
@@ -235,13 +318,12 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
         className="relative w-[80vw] max-w-xl max-h-[80vh] overflow-auto bg-black/80 backdrop-blur-md border border-gray-800 rounded-xl shadow-2xl pointer-events-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* En-tête */}
         <div className="sticky top-0 z-10 flex items-center justify-between p-6 border-b border-gray-800 bg-black/80 backdrop-blur-sm">
           <div>
             <h2 className="text-2xl font-bold text-white">{userCode}</h2>
           </div>
           <button
-            onClick={() => onClose()}
+            onClick={handleClose}
             className="rounded-full p-2 text-gray-400 hover:text-white hover:bg-gray-800 transition-colors cursor-pointer"
           >
             <X className="h-6 w-6" />
@@ -249,9 +331,7 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
         </div>
 
         <div className="p-6">
-          {/* Mini-montagne 3D et résumé */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {/* Mini-montagne 3D */}
             <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 flex flex-col items-center justify-center">
               <div className="text-gray-400 text-sm mb-2">Visualisation 3D</div>
               <div className="w-32 h-32 flex items-center justify-center">
@@ -263,16 +343,12 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
               </div>
             </div>
 
-            {/* Colonne 2 : Mesure et Début mesure */}
             <div className="grid grid-rows-2 gap-4">
-              {/* Mesure */}
               <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
                 <div className="text-gray-400 text-sm">Mesure</div>
                 <div className="text-base font-bold text-white mt-1 capitalize">{measureName}</div>
               </div>
 
-              {/* Début mesure */}
-              {/* Amélioration post-Jobtrek */}
               <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
                 <div className="text-gray-400 text-sm">Amélioration post-Jobtrek</div>
                 <div
@@ -287,7 +363,6 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
             </div>
           </div>
 
-          {/* Graphique */}
           <div className="mb-8">
             <h3 className="text-xl font-bold text-white mb-4">Évolution du parcours</h3>
             <div className="h-64 bg-gray-800/30 rounded-lg border border-gray-700 p-4">
@@ -295,7 +370,6 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
             </div>
           </div>
 
-          {/* Parcours professionnel */}
           <div>
             <h3 className="text-xl font-bold text-white mb-4">Parcours professionnel</h3>
             <div className="space-y-4">

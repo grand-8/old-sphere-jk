@@ -2,6 +2,12 @@ import type { LifeTrajectory } from "@/lib/data-generator"
 
 export interface JobtrekStatistics {
   improvementPercentage: number
+  progressionBreakdown: {
+    progressionPercentage: number
+    stagnationPercentage: number
+    regressionPercentage: number
+    totalCount: number
+  }
   topPostJobtrekEvents: Array<{ event: string; percentage: number }>
   measureDistribution: { mistJobtrek: number; jobtrekSchool: number; total: number }
   simpleComparison: { beforeAvg: number; afterAvg: number }
@@ -61,6 +67,12 @@ export function calculateJobtrekStatistics(trajectories: LifeTrajectory[]): Jobt
   if (trajectoriesWithJobtrek.length === 0) {
     return {
       improvementPercentage: 0,
+      progressionBreakdown: {
+        progressionPercentage: 0,
+        stagnationPercentage: 0,
+        regressionPercentage: 0,
+        totalCount: 0,
+      },
       topPostJobtrekEvents: [],
       measureDistribution: { mistJobtrek: 0, jobtrekSchool: 0, total: 0 },
       simpleComparison: { beforeAvg: 0, afterAvg: 0 },
@@ -70,17 +82,21 @@ export function calculateJobtrekStatistics(trajectories: LifeTrajectory[]): Jobt
   // 1. Calculer le pourcentage d'amélioration
   const improvementPercentage = calculateImprovementPercentage(trajectoriesWithJobtrek)
 
-  // 2. Calculer le top 5 des événements post-Jobtrek
+  // 2. Calculer la répartition progression vs stagnation/régression
+  const progressionBreakdown = calculateProgressionBreakdown(trajectoriesWithJobtrek)
+
+  // 3. Calculer le top 5 des événements post-Jobtrek
   const topPostJobtrekEvents = calculateTopPostJobtrekEvents(trajectoriesWithJobtrek)
 
-  // 3. Calculer la répartition des mesures
+  // 4. Calculer la répartition des mesures
   const measureDistribution = calculateMeasureDistribution(trajectoriesWithJobtrek)
 
-  // 4. Calculer la comparaison simple
+  // 5. Calculer la comparaison simple
   const simpleComparison = calculateSimpleBeforeAfter(trajectoriesWithJobtrek)
 
   return {
     improvementPercentage,
+    progressionBreakdown,
     topPostJobtrekEvents,
     measureDistribution,
     simpleComparison,
@@ -196,4 +212,43 @@ export function calculateIndividualImprovement(trajectory: LifeTrajectory): numb
   const improvement = ((finalScore - jobtrekScore) / Math.abs(jobtrekScore)) * 100
 
   return Math.round(improvement)
+}
+
+function calculateProgressionBreakdown(trajectories: LifeTrajectory[]): {
+  progressionPercentage: number
+  stagnationPercentage: number
+  regressionPercentage: number
+  totalCount: number
+} {
+  let progressionCount = 0
+  let stagnationCount = 0
+  let regressionCount = 0
+  let totalCount = 0
+
+  trajectories.forEach((trajectory) => {
+    const individualImprovement = calculateIndividualImprovement(trajectory)
+    const firstJobtrekYear = findFirstJobtrekYear(trajectory)
+
+    if (firstJobtrekYear) {
+      totalCount++
+      if (individualImprovement > 0) {
+        progressionCount++
+      } else if (individualImprovement === 0) {
+        stagnationCount++
+      } else {
+        regressionCount++
+      }
+    }
+  })
+
+  const progressionPercentage = totalCount > 0 ? Math.round((progressionCount / totalCount) * 100) : 0
+  const stagnationPercentage = totalCount > 0 ? Math.round((stagnationCount / totalCount) * 100) : 0
+  const regressionPercentage = totalCount > 0 ? Math.round((regressionCount / totalCount) * 100) : 0
+
+  return {
+    progressionPercentage,
+    stagnationPercentage,
+    regressionPercentage,
+    totalCount,
+  }
 }
