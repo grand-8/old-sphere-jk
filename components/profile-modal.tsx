@@ -127,6 +127,30 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
       }
     }
 
+    const getPointColor = (index: number, isJobtrek: boolean) => {
+      if (isJobtrek) return "#22C55E" // Jobtrek points stay green
+
+      const stepStatus = getStepStatus(trajectory.points[index], index, trajectory.points)
+      if (stepStatus) {
+        if (stepStatus.type === "non-termine") return "#ef4444" // Red for incomplete steps
+        if (stepStatus.type === "en-cours") return "#f97316" // Orange for last incomplete step
+      }
+
+      return "#ffffff" // White for completed steps
+    }
+
+    const getPointBorderColor = (index: number, isJobtrek: boolean) => {
+      if (isJobtrek) return "#ffffff" // White border for Jobtrek points
+
+      const stepStatus = getStepStatus(trajectory.points[index], index, trajectory.points)
+      if (stepStatus) {
+        if (stepStatus.type === "non-termine") return "#ef4444" // Red border for red points
+        if (stepStatus.type === "en-cours") return "#f97316" // Orange border for orange points
+      }
+
+      return "#9ca3af" // Gray border for white points
+    }
+
     const datasets = []
 
     if (jobtrekIndex !== -1 && jobtrekIndex < formattedData.length - 1) {
@@ -135,10 +159,8 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
         borderColor: "#ffffff",
         backgroundColor: "#ffffff",
         borderWidth: 3,
-        pointBackgroundColor: formattedData
-          .slice(0, jobtrekIndex + 1)
-          .map((d) => (d.isJobtrek ? "#22C55E" : "#ffffff")),
-        pointBorderColor: formattedData.slice(0, jobtrekIndex + 1).map((d) => (d.isJobtrek ? "#ffffff" : "#9ca3af")),
+        pointBackgroundColor: formattedData.slice(0, jobtrekIndex + 1).map((d, i) => getPointColor(i, d.isJobtrek)),
+        pointBorderColor: formattedData.slice(0, jobtrekIndex + 1).map((d, i) => getPointBorderColor(i, d.isJobtrek)),
         pointBorderWidth: 2,
         pointRadius: formattedData.slice(0, jobtrekIndex + 1).map((d) => (d.isJobtrek ? 6 : 4)),
         pointHoverRadius: 8,
@@ -158,12 +180,12 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
         pointBackgroundColor: [
           ...Array(jobtrekIndex).fill("transparent"),
           "transparent",
-          ...formattedData.slice(jobtrekIndex + 1).map(() => "#ffffff"),
+          ...formattedData.slice(jobtrekIndex + 1).map((d, i) => getPointColor(jobtrekIndex + 1 + i, false)),
         ],
         pointBorderColor: [
           ...Array(jobtrekIndex).fill("transparent"),
           "transparent",
-          ...formattedData.slice(jobtrekIndex + 1).map(() => "#9ca3af"),
+          ...formattedData.slice(jobtrekIndex + 1).map((d, i) => getPointBorderColor(jobtrekIndex + 1 + i, false)),
         ],
         pointBorderWidth: 2,
         pointRadius: [...Array(jobtrekIndex).fill(0), 0, ...formattedData.slice(jobtrekIndex + 1).map(() => 4)],
@@ -177,8 +199,8 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
         borderColor: "#22C55E",
         backgroundColor: "#22C55E",
         borderWidth: 3,
-        pointBackgroundColor: formattedData.map((d) => (d.isJobtrek ? "#22C55E" : "#ffffff")),
-        pointBorderColor: formattedData.map((d) => (d.isJobtrek ? "#ffffff" : "#9ca3af")),
+        pointBackgroundColor: formattedData.map((d, i) => getPointColor(i, d.isJobtrek)),
+        pointBorderColor: formattedData.map((d, i) => getPointBorderColor(i, d.isJobtrek)),
         pointBorderWidth: 2,
         pointRadius: formattedData.map((d) => (d.isJobtrek ? 6 : 4)),
         pointHoverRadius: 8,
@@ -332,9 +354,9 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
 
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 flex flex-col items-center justify-center">
+            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 flex flex-col justify-start items-center">
               <div className="text-gray-400 text-sm mb-2">Visualisation 3D</div>
-              <div className="w-32 h-32 flex items-center justify-center">
+              <div className="w-32 h-32 flex items-start justify-center">
                 <canvas
                   ref={canvasRef}
                   className="w-full h-full rounded-lg"

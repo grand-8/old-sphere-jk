@@ -1,11 +1,14 @@
 "use client"
 
 import type React from "react"
-
 import { useRef, useEffect, useCallback } from "react"
 import * as THREE from "three"
 import type { LifeTrajectory } from "@/lib/data-service"
-import { calculateDynamicAmplification, calculatePointHeight } from "@/lib/mountain-calculations"
+import {
+  calculateDynamicAmplification,
+  calculatePointHeight,
+  getUnifiedMountainConfig,
+} from "@/lib/mountain-calculations"
 
 const COLORS = {
   darkBlue: new THREE.Color("#1a2b4d"),
@@ -43,100 +46,103 @@ export function useMiniMountain(trajectory: LifeTrajectory | null): UseMiniMount
       return mountainGroup
     }
 
-    const baseRadius = 0.8 // Rayon de base réduit pour la mini-montagne
-    const maxHeight = 1.0 // Hauteur maximale réduite
+    const baseRadius = 0.8 // Doublé de 0.4 à 0.8
+    const maxHeight = 1.0 // Doublé de 0.5 à 1.0
     const dataPoints = trajectory.points
 
-    // Calculs d'amplification dynamique
     const calculation = calculateDynamicAmplification(dataPoints)
+    const config = getUnifiedMountainConfig(false)
 
-    // Créer les points temporels sur la circonférence
-    const circumferencePoints: THREE.Vector3[] = []
-    const circumferenceColors: number[] = []
+    const ridgePoints: THREE.Vector3[] = []
+    const ridgeColors: number[] = []
 
     for (let i = 0; i < dataPoints.length; i++) {
       const point = dataPoints[i]
       const angle = (i / dataPoints.length) * Math.PI * 2
 
-      // Position sur la circonférence
       const x = Math.cos(angle) * baseRadius
       const z = Math.sin(angle) * baseRadius
 
-      // Hauteur selon la valeur avec amplification dynamique
-      const peakHeight = calculatePointHeight(point.cumulativeScore, calculation, maxHeight)
+      let peakHeight = calculatePointHeight(point.cumulativeScore, calculation, maxHeight)
+
+      const scoreVariation = (point.score * calculation.amplificationDynamique) / 10
+      const individualPeakHeight = scoreVariation * config.individualVariation
+      peakHeight += individualPeakHeight
+
       const y = Math.max(peakHeight, 0.05)
 
-      circumferencePoints.push(new THREE.Vector3(x, y, z))
+      ridgePoints.push(new THREE.Vector3(x, y, z))
 
-      // Couleur avec normalisation dynamique
       const offsetScore = point.cumulativeScore + calculation.verticalOffset
       const amplifiedScore = offsetScore * calculation.amplificationDynamique
       const normalizedHeight = amplifiedScore / calculation.maxAmplifiedScore
       const pointColor = new THREE.Color(color).lerp(new THREE.Color(0xffffff), normalizedHeight * 0.3)
-      circumferenceColors.push(pointColor.r, pointColor.g, pointColor.b)
+      ridgeColors.push(pointColor.r, pointColor.g, pointColor.b)
     }
 
-    // Point central élevé pour la convergence
-    const avgHeight = circumferencePoints.reduce((sum, p) => sum + p.y, 0) / circumferencePoints.length
-    const centralHeight = avgHeight * 1.2 // Légèrement plus haut que la moyenne
+    const avgHeight = ridgePoints.reduce((sum, p) => sum + p.y, 0) / ridgePoints.length
+    const centralHeight = avgHeight * config.centralHeightMultiplier
     const centralPoint = new THREE.Vector3(0, centralHeight, 0)
 
-    // Points de base circulaire
+    const basePointsCount = Math.max(12, dataPoints.length * 2)
     const basePoints: THREE.Vector3[] = []
-    for (let i = 0; i < dataPoints.length; i++) {
-      const angle = (i / dataPoints.length) * Math.PI * 2
+    for (let i = 0; i < basePointsCount; i++) {
+      const angle = (i / basePointsCount) * Math.PI * 2
       const x = Math.cos(angle) * baseRadius
       const z = Math.sin(angle) * baseRadius
-      basePoints.push(new THREE.Vector3(x, 0, z))
+      basePoints.push(new THREE.Vector3(x, 0.05, z)) // Base légèrement élevée
     }
 
-    // Créer les lignes de la structure wireframe
     const lines: THREE.Vector3[][] = []
 
-    // 1. Contour de la base circulaire
     for (let i = 0; i < basePoints.length; i++) {
       const nextI = (i + 1) % basePoints.length
       lines.push([basePoints[i], basePoints[nextI]])
     }
 
-    // 2. Lignes verticales des pics
-    for (let i = 0; i < circumferencePoints.length; i++) {
-      lines.push([basePoints[i], circumferencePoints[i]])
+    for (let i = 0; i < ridgePoints.length; i++) {
+      const ridgeAngle = (i / ridgePoints.length) * 2 * Math.PI
+      const closestBaseIndex = Math.round((ridgeAngle / (2 * Math.PI)) * basePoints.length) % basePoints.length
+      lines.push([basePoints[closestBaseIndex], ridgePoints[i]])
     }
 
-    // 3. Contour des pics sur la circonférence
-    for (let i = 0; i < circumferencePoints.length; i++) {
-      const nextI = (i + 1) % circumferencePoints.length
-      lines.push([circumferencePoints[i], circumferencePoints[nextI]])
+    for (let i = 0; i < ridgePoints.length; i++) {
+      const nextI = (i + 1) % ridgePoints.length
+      lines.push([ridgePoints[i], ridgePoints[nextI]])
     }
 
-    // 4. Lignes de convergence vers le centre
-    for (let i = 0; i < circumferencePoints.length; i++) {
-      lines.push([circumferencePoints[i], centralPoint])
+    for (let i = 0; i < ridgePoints.length; i++) {
+      lines.push([ridgePoints[i], centralPoint])
     }
 
-    // 5. Triangulation de la surface (quelques lignes internes)
-    for (let i = 0; i < circumferencePoints.length; i += 2) {
-      const nextI = (i + 1) % circumferencePoints.length
-      lines.push([circumferencePoints[i], circumferencePoints[nextI]])
+    for (let i = 0; i < ridgePoints.length; i += 2) {
+      const nextI = (i + 1) % ridgePoints.length
+      lines.push([ridgePoints[i], ridgePoints[nextI]])
     }
 
-    // Créer les géométries et matériaux pour chaque ligne
     lines.forEach((linePoints, index) => {
       const geometry = new THREE.BufferGeometry().setFromPoints(linePoints)
 
-      // Couleur basée sur le type de ligne
-      let lineColor = color
-      if (index < basePoints.length) {
-        // Lignes de base - plus sombres
-        lineColor = new THREE.Color(color).multiplyScalar(0.6)
-      } else if (index >= lines.length - circumferencePoints.length) {
-        // Lignes de convergence - plus claires
-        lineColor = new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.2)
-      }
+      const colorsArray: number[] = []
+
+      const maxY = Math.max(...linePoints.map((p) => p.y))
+      const minY = Math.min(...linePoints.map((p) => p.y))
+      const heightRange = maxY - minY
+
+      linePoints.forEach((point) => {
+        const normalizedHeight = heightRange > 0 ? (point.y - minY) / heightRange : 0
+
+        const gradientColor = new THREE.Color(color)
+        gradientColor.lerp(new THREE.Color(0xffffff), normalizedHeight * 0.9)
+
+        colorsArray.push(gradientColor.r, gradientColor.g, gradientColor.b)
+      })
+
+      const colorArray = new Float32Array(colorsArray)
+      geometry.setAttribute("color", new THREE.BufferAttribute(colorArray, 3))
 
       const material = new THREE.LineBasicMaterial({
-        color: lineColor,
+        vertexColors: true,
         transparent: true,
         opacity: 0.8,
         linewidth: 1,
@@ -150,7 +156,6 @@ export function useMiniMountain(trajectory: LifeTrajectory | null): UseMiniMount
     return mountainGroup
   }, [])
 
-  // Fonction pour obtenir la couleur de catégorie
   const getCategoryColor = useCallback((category: string) => {
     const baseColor = new THREE.Color()
 
@@ -174,11 +179,9 @@ export function useMiniMountain(trajectory: LifeTrajectory | null): UseMiniMount
     return baseColor
   }, [])
 
-  // Initialisation de la scène
   useEffect(() => {
     if (!canvasRef.current || !trajectory) return
 
-    // Créer la scène
     const scene = new THREE.Scene()
     sceneRef.current = scene
 
@@ -187,18 +190,16 @@ export function useMiniMountain(trajectory: LifeTrajectory | null): UseMiniMount
     camera.lookAt(0, 0.3, 0)
     cameraRef.current = camera
 
-    // Créer le renderer
     const renderer = new THREE.WebGLRenderer({
       canvas: canvasRef.current,
       antialias: true,
       alpha: true,
     })
-    renderer.setSize(128, 128) // Taille fixe pour la mini-scène
+    renderer.setSize(128, 128)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-    renderer.setClearColor(0x000000, 0) // Fond transparent
+    renderer.setClearColor(0x000000, 0)
     rendererRef.current = renderer
 
-    // Ajouter l'éclairage
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6)
     scene.add(ambientLight)
 
@@ -206,7 +207,6 @@ export function useMiniMountain(trajectory: LifeTrajectory | null): UseMiniMount
     pointLight.position.set(2, 2, 2)
     scene.add(pointLight)
 
-    // Créer la mini-montagne avec amplification dynamique
     const categoryColor = getCategoryColor(trajectory.category)
     const mountainGroup = createMiniMountain(trajectory, scene, categoryColor)
     mountainGroupRef.current = mountainGroup
@@ -219,7 +219,6 @@ export function useMiniMountain(trajectory: LifeTrajectory | null): UseMiniMount
       pointsCount: trajectory.points?.length || 0,
     })
 
-    // Animation de rotation
     const animate = () => {
       if (!isReadyRef.current || !mountainGroupRef.current || !rendererRef.current || !cameraRef.current) {
         return
@@ -227,14 +226,12 @@ export function useMiniMountain(trajectory: LifeTrajectory | null): UseMiniMount
 
       mountainGroupRef.current.rotation.y += 0.008
 
-      // Rendu
       rendererRef.current.render(scene, cameraRef.current)
       animationFrameRef.current = requestAnimationFrame(animate)
     }
 
     animate()
 
-    // Nettoyage
     return () => {
       isReadyRef.current = false
 
