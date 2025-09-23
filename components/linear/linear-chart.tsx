@@ -319,27 +319,42 @@ export function LinearChart({ trajectories }: LinearChartProps) {
       const mouseX = (event.native as MouseEvent).clientX - rect.left
       const mouseY = (event.native as MouseEvent).clientY - rect.top
 
+      console.log(`[v0] HOVER_ENHANCED - View: ${isThreePointView ? "SIMPLIFIED" : "COMPLETE"}`)
+      console.log(`[v0] HOVER_ENHANCED - Mouse position: (${mouseX.toFixed(1)}, ${mouseY.toFixed(1)})`)
+      console.log(`[v0] HOVER_ENHANCED - Total datasets: ${chart.data.datasets.length}`)
+
+      const trajectoryDatasets = chart.data.datasets.filter(
+        (d: any) => !d.isAverage && !d.isProgression && d.trajectoryId,
+      )
+      console.log(`[v0] HOVER_ENHANCED - Trajectory datasets: ${trajectoryDatasets.length}`)
+
       const closestTrajectoryId = findClosestTrajectoryToMouse(chart, mouseX, mouseY, 25)
+
+      console.log(`[v0] HOVER_ENHANCED - Closest trajectory found: ${closestTrajectoryId || "NONE"}`)
+      console.log(`[v0] HOVER_ENHANCED - Using maxDistance: 25`)
 
       if (closestTrajectoryId) {
         setHoveredLineId(closestTrajectoryId)
 
         const trajectory = trajectories.find((t) => t.id === closestTrajectoryId)
         if (trajectory) {
+          console.log(`[v0] HOVER_ENHANCED - Found trajectory: ${trajectory.userCode}`)
           const syntheticElements = [
             {
               datasetIndex: chart.data.datasets.findIndex((d: any) => d.trajectoryId === closestTrajectoryId),
               index: 0,
             },
           ]
+          console.log(`[v0] HOVER_ENHANCED - Dataset index: ${syntheticElements[0].datasetIndex}`)
           handleHover(event, syntheticElements, chart)
         }
       } else {
+        console.log(`[v0] HOVER_ENHANCED - No trajectory found within distance`)
         setHoveredLineId(null)
         handleHover(event, [], chart)
       }
     },
-    [handleHover, trajectories],
+    [handleHover, trajectories, isThreePointView],
   )
 
   const enhancedHandleClick = useCallback(
@@ -589,11 +604,26 @@ function findClosestTrajectoryToMouse(chart: any, mouseX: number, mouseY: number
   let closestTrajectoryId: string | null = null
   let minDistance = maxDistance
 
+  console.log(`[v0] FIND_CLOSEST_LOCAL - Starting search with maxDistance: ${maxDistance}`)
+  console.log(`[v0] FIND_CLOSEST_LOCAL - Mouse at: (${mouseX.toFixed(1)}, ${mouseY.toFixed(1)})`)
+
   chart.data.datasets.forEach((dataset: any, datasetIndex) => {
-    if (dataset.isAverage || dataset.isProgression || !dataset.trajectoryId) return
+    if (dataset.isAverage || dataset.isProgression || !dataset.trajectoryId) {
+      console.log(
+        `[v0] FIND_CLOSEST_LOCAL - Skipping dataset ${datasetIndex}: ${dataset.isAverage ? "average" : dataset.isProgression ? "progression" : "no trajectoryId"}`,
+      )
+      return
+    }
 
     const meta = chart.getDatasetMeta(datasetIndex)
-    if (!meta.visible) return
+    if (!meta.visible) {
+      console.log(`[v0] FIND_CLOSEST_LOCAL - Skipping invisible dataset ${datasetIndex}`)
+      return
+    }
+
+    console.log(
+      `[v0] FIND_CLOSEST_LOCAL - Checking dataset ${datasetIndex} (${dataset.trajectoryId}) with ${meta.data.length} points`,
+    )
 
     for (let i = 0; i < meta.data.length - 1; i++) {
       const point1 = meta.data[i] as any
@@ -603,13 +633,24 @@ function findClosestTrajectoryToMouse(chart: any, mouseX: number, mouseY: number
 
       const distance = calculateDistanceToLineSegment(mouseX, mouseY, point1.x, point1.y, point2.x, point2.y)
 
+      if (distance < 50) {
+        // Only log close segments to avoid spam
+        console.log(
+          `[v0] FIND_CLOSEST_LOCAL - Segment ${i}-${i + 1}: distance=${distance.toFixed(2)}, points=(${point1.x.toFixed(1)},${point1.y.toFixed(1)}) to (${point2.x.toFixed(1)},${point2.y.toFixed(1)})`,
+        )
+      }
+
       if (distance < minDistance) {
         minDistance = distance
         closestTrajectoryId = dataset.trajectoryId
+        console.log(`[v0] FIND_CLOSEST_LOCAL - NEW CLOSEST: ${closestTrajectoryId} at distance ${distance.toFixed(2)}`)
       }
     }
   })
 
+  console.log(
+    `[v0] FIND_CLOSEST_LOCAL - Final result: ${closestTrajectoryId || "NONE"} at distance ${minDistance.toFixed(2)}`,
+  )
   return closestTrajectoryId
 }
 

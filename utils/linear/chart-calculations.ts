@@ -57,9 +57,21 @@ export function findClosestTrajectoryToMouse(
   let closestTrajectoryId: string | null = null
   let minDistance = maxDistance
 
+  const isThreePointView = (chart.config?.options as any)?.isThreePointView || false
+  console.log(`[v0] FIND_CLOSEST_UTILS - View: ${isThreePointView ? "SIMPLIFIED" : "COMPLETE"}`)
+  console.log(`[v0] FIND_CLOSEST_UTILS - Starting search with maxDistance: ${maxDistance}`)
+  console.log(`[v0] FIND_CLOSEST_UTILS - Mouse at: (${mouseX.toFixed(1)}, ${mouseY.toFixed(1)})`)
+
   chart.data.datasets.forEach((dataset: any, datasetIndex) => {
     const meta = chart.getDatasetMeta(datasetIndex)
-    if (!meta.visible) return
+    if (!meta.visible) {
+      console.log(`[v0] FIND_CLOSEST_UTILS - Skipping invisible dataset ${datasetIndex}`)
+      return
+    }
+
+    console.log(
+      `[v0] FIND_CLOSEST_UTILS - Checking dataset ${datasetIndex} (${dataset.trajectoryId || "no ID"}) with ${meta.data.length} points`,
+    )
 
     for (let i = 0; i < meta.data.length - 1; i++) {
       const point1 = meta.data[i]
@@ -69,13 +81,26 @@ export function findClosestTrajectoryToMouse(
 
       const distance = calculateDistanceToLineSegment(mouseX, mouseY, point1.x, point1.y, point2.x, point2.y)
 
+      if (distance < 50) {
+        // Only log close segments to avoid spam
+        console.log(
+          `[v0] FIND_CLOSEST_UTILS - Segment ${i}-${i + 1}: distance=${distance.toFixed(2)}, points=(${point1.x.toFixed(1)},${point1.y.toFixed(1)}) to (${point2.x.toFixed(1)},${point2.y.toFixed(1)})`,
+        )
+      }
+
       if (distance < minDistance) {
         minDistance = distance
         closestTrajectoryId = dataset.trajectoryId
+        console.log(
+          `[v0] FIND_CLOSEST_UTILS - NEW CLOSEST: ${closestTrajectoryId || "NONE"} at distance ${distance.toFixed(2)}`,
+        )
       }
     }
   })
 
+  console.log(
+    `[v0] FIND_CLOSEST_UTILS - Final result: ${closestTrajectoryId || "NONE"} at distance ${minDistance.toFixed(2)}`,
+  )
   return closestTrajectoryId
 }
 

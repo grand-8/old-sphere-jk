@@ -223,9 +223,17 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
       const clientX = (event.native as MouseEvent).clientX
       const clientY = (event.native as MouseEvent).clientY
 
+      const isThreePointView = chart.config?.options?.isThreePointView || false
+      console.log(`[v0] HOVER_HOOK - View: ${isThreePointView ? "SIMPLIFIED" : "COMPLETE"}`)
+      console.log(`[v0] HOVER_HOOK - Mouse position: (${mouseX.toFixed(1)}, ${mouseY.toFixed(1)})`)
+      console.log(`[v0] HOVER_HOOK - Using maxDistance: 30`)
+
       const closestTrajectoryId = findClosestTrajectoryToMouse(chart, mouseX, mouseY, 30)
 
+      console.log(`[v0] HOVER_HOOK - Closest trajectory from utils: ${closestTrajectoryId || "NONE"}`)
+
       if (closestTrajectoryId === "progression") {
+        console.log(`[v0] HOVER_HOOK - Handling progression line`)
         const progressionDataset = chartData.datasets.find(
           (dataset: any) => dataset.trajectoryId === "progression",
         ) as any
@@ -261,6 +269,7 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
           ;(event.native.target as HTMLElement).style.cursor = "pointer"
         }
       } else if (closestTrajectoryId === "average") {
+        console.log(`[v0] HOVER_HOOK - Handling average line`)
         const averageDataset = chartData.datasets.find((dataset: any) => dataset.trajectoryId === "average") as any
 
         const averageDatasetIndex = chartData.datasets.findIndex((dataset: any) => dataset.trajectoryId === "average")
@@ -286,6 +295,7 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
           ;(event.native.target as HTMLElement).style.cursor = "pointer"
         }
       } else if (closestTrajectoryId) {
+        console.log(`[v0] HOVER_HOOK - Handling individual trajectory: ${closestTrajectoryId}`)
         const trajectoryData = trajectories.find((t) => t.id === closestTrajectoryId)
 
         const trajectoryDatasetIndex = chartData.datasets.findIndex(
@@ -332,6 +342,7 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
           ;(event.native.target as HTMLElement).style.cursor = "pointer"
         }
       } else {
+        console.log(`[v0] HOVER_HOOK - No trajectory found, clearing hover state`)
         chart.setActiveElements([])
         chart.update("none")
 
