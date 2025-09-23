@@ -65,12 +65,16 @@ export function findClosestTrajectoryToMouse(
   chart.data.datasets.forEach((dataset: any, datasetIndex) => {
     const meta = chart.getDatasetMeta(datasetIndex)
     if (!meta.visible) {
-      console.log(`[v0] FIND_CLOSEST_UTILS - Skipping invisible dataset ${datasetIndex}`)
+      return
+    }
+
+    const hasTrajectoryId = dataset.trajectoryId && dataset.trajectoryId !== "undefined"
+    if (!hasTrajectoryId) {
       return
     }
 
     console.log(
-      `[v0] FIND_CLOSEST_UTILS - Checking dataset ${datasetIndex} (${dataset.trajectoryId || "no ID"}) with ${meta.data.length} points`,
+      `[v0] FIND_CLOSEST_UTILS - Checking dataset ${datasetIndex} (${dataset.trajectoryId}) with ${meta.data.length} points`,
     )
 
     for (let i = 0; i < meta.data.length - 1; i++) {
@@ -81,8 +85,7 @@ export function findClosestTrajectoryToMouse(
 
       const distance = calculateDistanceToLineSegment(mouseX, mouseY, point1.x, point1.y, point2.x, point2.y)
 
-      if (distance < 50) {
-        // Only log close segments to avoid spam
+      if (distance < maxDistance * 2) {
         console.log(
           `[v0] FIND_CLOSEST_UTILS - Segment ${i}-${i + 1}: distance=${distance.toFixed(2)}, points=(${point1.x.toFixed(1)},${point1.y.toFixed(1)}) to (${point2.x.toFixed(1)},${point2.y.toFixed(1)})`,
         )
@@ -91,9 +94,7 @@ export function findClosestTrajectoryToMouse(
       if (distance < minDistance) {
         minDistance = distance
         closestTrajectoryId = dataset.trajectoryId
-        console.log(
-          `[v0] FIND_CLOSEST_UTILS - NEW CLOSEST: ${closestTrajectoryId || "NONE"} at distance ${distance.toFixed(2)}`,
-        )
+        console.log(`[v0] FIND_CLOSEST_UTILS - NEW CLOSEST: ${closestTrajectoryId} at distance ${distance.toFixed(2)}`)
       }
     }
   })
