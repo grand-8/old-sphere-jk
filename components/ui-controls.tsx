@@ -5,6 +5,7 @@ import { RefreshCw } from "lucide-react"
 import { SearchInput } from "@/components/shared/search-input"
 import { Counter } from "@/components/shared/counter"
 import { StatisticsButton } from "@/components/shared/statistics-button"
+import { InfoModal } from "@/components/shared/info-modal"
 
 interface UIControlsProps {
   handleUIEvent: (e: React.MouseEvent) => void
@@ -49,6 +50,8 @@ export function UIControls({
         style={{ isolation: "isolate" }}
         data-ui-element="true"
       >
+        <InfoModal onMouseDown={handleUIEvent} onMouseMove={handleUIEvent} />
+
         {onStatisticsClick && (
           <StatisticsButton onClick={onStatisticsClick} onMouseDown={handleUIEvent} onMouseMove={handleUIEvent} />
         )}
