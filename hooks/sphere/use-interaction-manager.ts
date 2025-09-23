@@ -303,8 +303,10 @@ export function useInteractionManager(
       }
       lastClickTimeRef.current = now
 
-      mouse.x = (event.clientX / window.innerWidth) * 2 - 1
-      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
+      if (typeof window !== "undefined") {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
+      }
 
       if (!cameraRef.current || !sceneRef.current) {
         return
@@ -353,18 +355,22 @@ export function useInteractionManager(
       }
     }
 
-    window.addEventListener("mousedown", handleMouseDown)
-    window.addEventListener("mousemove", handleMouseMove)
-    window.addEventListener("mouseup", handleMouseUp)
-    window.addEventListener("click", handleClick)
-    window.addEventListener("keydown", handleKeyDown)
+    if (typeof window !== "undefined") {
+      window.addEventListener("mousedown", handleMouseDown)
+      window.addEventListener("mousemove", handleMouseMove)
+      window.addEventListener("mouseup", handleMouseUp)
+      window.addEventListener("click", handleClick)
+      window.addEventListener("keydown", handleKeyDown)
+    }
 
     return () => {
-      window.removeEventListener("mousedown", handleMouseDown)
-      window.removeEventListener("mousemove", handleMouseMove)
-      window.removeEventListener("mouseup", handleMouseUp)
-      window.removeEventListener("click", handleClick)
-      window.removeEventListener("keydown", handleKeyDown)
+      if (typeof window !== "undefined") {
+        window.removeEventListener("mousedown", handleMouseDown)
+        window.removeEventListener("mousemove", handleMouseMove)
+        window.removeEventListener("mouseup", handleMouseUp)
+        window.removeEventListener("click", handleClick)
+        window.removeEventListener("keydown", handleKeyDown)
+      }
 
       if (moveTimeoutRef.current) {
         clearTimeout(moveTimeoutRef.current)

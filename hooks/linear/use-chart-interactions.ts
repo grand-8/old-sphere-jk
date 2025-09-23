@@ -174,6 +174,8 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
   )
 
   useEffect(() => {
+    if (typeof window === "undefined") return
+
     window.addEventListener("keydown", handleKeyDown)
     window.addEventListener("keyup", handleKeyUp)
 

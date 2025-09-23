@@ -28,7 +28,7 @@ function isInProtectedZone(x: number, y: number): boolean {
   if (x < 200 && y < 100) return true
 
   // Zone en haut à droite (recherche, toggle et zoom) - élargie
-  if (x > window.innerWidth - 450 && y < 100) return true
+  if (typeof window !== "undefined" && x > window.innerWidth - 450 && y < 100) return true
 
   return false
 }
@@ -224,8 +224,10 @@ export function useMouseEvents(
       }
 
       const mouse = new THREE.Vector2()
-      mouse.x = (event.clientX / window.innerWidth) * 2 - 1
-      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
+      if (typeof window !== "undefined") {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
+      }
 
       if (!cameraRef.current || !sceneRef.current) {
         return

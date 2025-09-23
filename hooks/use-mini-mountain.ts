@@ -196,7 +196,11 @@ export function useMiniMountain(trajectory: LifeTrajectory | null): UseMiniMount
       alpha: true,
     })
     renderer.setSize(128, 128)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    if (typeof window !== "undefined") {
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    } else {
+      renderer.setPixelRatio(1)
+    }
     renderer.setClearColor(0x000000, 0)
     rendererRef.current = renderer
 
