@@ -31,7 +31,7 @@ export function useThreeScene(containerRef: React.RefObject<HTMLDivElement>): Us
   const [controlsInitialized, setControlsInitialized] = useState(false)
 
   useEffect(() => {
-    if (!containerRef.current) return
+    if (!containerRef.current || typeof window === "undefined") return
 
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0x000000)
@@ -155,7 +155,7 @@ export function useThreeScene(containerRef: React.RefObject<HTMLDivElement>): Us
 
     const handleResize = () => {
       try {
-        if (cameraRef.current && rendererRef.current) {
+        if (cameraRef.current && rendererRef.current && typeof window !== "undefined") {
           cameraRef.current.aspect = window.innerWidth / window.innerHeight
           cameraRef.current.updateProjectionMatrix()
           rendererRef.current.setSize(window.innerWidth, window.innerHeight)
@@ -171,10 +171,8 @@ export function useThreeScene(containerRef: React.RefObject<HTMLDivElement>): Us
       setIsRendering(false)
       setControlsInitialized(false)
 
-      window.removeEventListener("resize", handleResize)
-
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
+      if (typeof window !== "undefined") {
+        window.removeEventListener("resize", handleResize)
       }
 
       if (containerRef.current && rendererRef.current) {
