@@ -369,7 +369,7 @@ function calculateBeforeToJobtrekProgression(trajectories: LifeTrajectory[]): nu
   return validTrajectories > 0 ? Math.round(totalImprovements / validTrajectories) : 0
 }
 
-function calculateJobtrekToFinalProgression(trajectories: LifeTrajectory[]): number {
+export function calculateJobtrekToFinalProgression(trajectories: LifeTrajectory[]): number {
   if (!trajectories || trajectories.length === 0) return 0
 
   let totalImprovements = 0
