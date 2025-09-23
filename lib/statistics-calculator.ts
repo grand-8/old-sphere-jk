@@ -115,25 +115,38 @@ export function calculateJobtrekStatistics(trajectories: LifeTrajectory[]): Jobt
   }
 }
 
-function calculateImprovementPercentage(trajectories: LifeTrajectory[]): number {
+export function calculateImprovementPercentage(trajectories: LifeTrajectory[]): number {
+  console.log("[v0] STAT MODAL - calculateImprovementPercentage called with", trajectories.length, "trajectories")
+
   let totalImprovements = 0
   let validTrajectories = 0
 
-  trajectories.forEach((trajectory) => {
+  trajectories.forEach((trajectory, index) => {
     const individualImprovement = calculateIndividualImprovement(trajectory)
+    console.log(
+      `[v0] STAT MODAL - Trajectory ${index} (${trajectory.userCode}): improvement = ${individualImprovement}%`,
+    )
 
     // Inclure toutes les trajectoires qui ont un calcul valide (même 0%)
     const firstJobtrekYear = findFirstJobtrekYear(trajectory)
     if (firstJobtrekYear) {
       totalImprovements += individualImprovement
       validTrajectories++
+      console.log(
+        `[v0] STAT MODAL - Added trajectory ${trajectory.userCode}: running total = ${totalImprovements}, valid count = ${validTrajectories}`,
+      )
+    } else {
+      console.log(`[v0] STAT MODAL - Skipped trajectory ${trajectory.userCode}: no Jobtrek year found`)
     }
   })
 
   if (validTrajectories === 0) return 0
 
   // Retourner la moyenne des améliorations individuelles
-  return Math.round(totalImprovements / validTrajectories)
+  const result = Math.round(totalImprovements / validTrajectories)
+  console.log(`[v0] STAT MODAL - Final result: ${result}% (total: ${totalImprovements}, valid: ${validTrajectories})`)
+
+  return result
 }
 
 function calculateTopPostJobtrekEvents(trajectories: LifeTrajectory[]): Array<{ event: string; percentage: number }> {

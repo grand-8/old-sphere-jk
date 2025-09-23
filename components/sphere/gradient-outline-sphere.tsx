@@ -7,12 +7,12 @@ import { StatisticsModal } from "@/components/statistics-modal"
 import { AlertTriangle } from "lucide-react"
 import { useLifeTrajectoryStore } from "@/lib/store"
 import { UIControls } from "@/components/ui-controls"
-import { useThreeScene } from "@/hooks/use-three-scene"
-import { useMountainGeneration } from "@/hooks/use-mountain-generation"
-import { useMouseEvents } from "@/hooks/use-mouse-events"
-import { useVisualizationState } from "@/hooks/use-visualization-state"
-import { useInteractionManager } from "@/hooks/use-interaction-manager"
+import { useThreeScene } from "@/hooks/sphere/use-three-scene"
+import { useMountainGeneration } from "@/hooks/sphere/use-mountain-generation"
+import { useMouseEvents } from "@/hooks/sphere/use-mouse-events"
+import { useInteractionManager } from "@/hooks/sphere/use-interaction-manager"
 import { calculateJobtrekStatistics } from "@/lib/statistics-calculator"
+import type { LifeTrajectory } from "@/lib/types"
 
 /**
  * Composant principal de visualisation de la sphère avec les trajectoires de vie
@@ -24,28 +24,21 @@ export default function GradientOutlineSphere() {
 
   // État pour la modal de statistiques
   const [showStatistics, setShowStatistics] = useState(false)
+  const [hasPlayedIntroAnimation, setHasPlayedIntroAnimation] = useState(false)
 
-  // État centralisé de la visualisation
-  const visualizationState = useVisualizationState()
-  const {
-    selectedTrajectory,
-    setSelectedTrajectory,
-    controlsEnabled,
-    setControlsEnabled,
-    isZoomedIn,
-    isMoving,
-    setIsMoving,
-    lastMoveTime,
-    setLastMoveTime,
-    isUpdatingMountains,
-    setIsUpdatingMountains,
-    filterError,
-    setFilterError,
-    isFilterActive,
-    setIsFilterActive,
-    lastFilteredCountRef,
-    updateTimeoutRef,
-  } = visualizationState
+  const [selectedTrajectory, setSelectedTrajectory] = useState<LifeTrajectory | null>(null)
+  const [controlsEnabled, setControlsEnabled] = useState(true)
+  const [isZoomedIn, setIsZoomedIn] = useState(false)
+  const [isMoving, setIsMoving] = useState(false)
+  const [lastMoveTime, setLastMoveTime] = useState(Date.now() - 1000)
+  const [isUpdatingMountains, setIsUpdatingMountains] = useState(false)
+  const [filterError, setFilterError] = useState<string | null>(null)
+  const [isFilterActive, setIsFilterActive] = useState(false)
+
+  // Références simples
+  const lastFilteredCountRef = useRef<number>(0)
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const moveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // État du store global
   const {
@@ -53,10 +46,11 @@ export default function GradientOutlineSphere() {
     trajectoryData,
     searchQuery,
     isDirectCodeSearch,
-    dataSource,
     isLoading,
     error,
     refreshData,
+    isIntroAnimationPlaying,
+    setIsIntroAnimationPlaying,
   } = useLifeTrajectoryStore()
 
   // Hooks de gestion de la scène 3D
@@ -80,8 +74,49 @@ export default function GradientOutlineSphere() {
   const { resetHighlight } = mouseEvents
 
   // Hook de gestion des interactions
-  const interactionManager = useInteractionManager(visualizationState, threeScene, mouseEvents)
-  const { performZoom, handleCloseProfile, setupEventListeners } = interactionManager
+  const interactionManager = useInteractionManager(
+    {
+      selectedTrajectory,
+      setSelectedTrajectory,
+      controlsEnabled,
+      setControlsEnabled,
+      isZoomedIn,
+      setIsZoomedIn,
+      isMoving,
+      setIsMoving,
+      lastMoveTime,
+      setLastMoveTime,
+      isIntroAnimationPlaying,
+      setIsIntroAnimationPlaying,
+      isUpdatingMountains,
+      setIsUpdatingMountains,
+      filterError,
+      setFilterError,
+      isFilterActive,
+      setIsFilterActive,
+      lastFilteredCountRef,
+      updateTimeoutRef,
+      moveTimeoutRef,
+    },
+    threeScene,
+    mouseEvents,
+  )
+  const { performZoom, performIntroAnimation, handleCloseProfile, setupEventListeners } = interactionManager
+
+  useEffect(() => {
+    // Only trigger intro animation once per session and when data has loaded
+    if (!isLoading && !hasPlayedIntroAnimation && trajectoryData.length > 0 && controlsInitialized) {
+      setHasPlayedIntroAnimation(true)
+
+      // Small delay to ensure everything is properly initialized
+      setTimeout(() => {
+        performIntroAnimation()
+      }, 500)
+    }
+  }, [isLoading, hasPlayedIntroAnimation, trajectoryData.length, controlsInitialized, performIntroAnimation])
+
+  // État pour la modal de profil
+  const [showProfile, setShowProfile] = useState(false)
 
   // Gestionnaires d'événements UI
   const handleUIEvent = useCallback((e: React.MouseEvent) => {
@@ -158,17 +193,17 @@ export default function GradientOutlineSphere() {
 
     const handleControlsStart = () => {
       setIsMoving(true)
-      if (visualizationState.moveTimeoutRef.current) {
-        clearTimeout(visualizationState.moveTimeoutRef.current)
+      if (moveTimeoutRef.current) {
+        clearTimeout(moveTimeoutRef.current)
       }
     }
 
     const handleControlsEnd = () => {
-      if (visualizationState.moveTimeoutRef.current) {
-        clearTimeout(visualizationState.moveTimeoutRef.current)
+      if (moveTimeoutRef.current) {
+        clearTimeout(moveTimeoutRef.current)
       }
 
-      visualizationState.moveTimeoutRef.current = setTimeout(() => {
+      moveTimeoutRef.current = setTimeout(() => {
         if (!mouseEvents.isDraggingRef.current) {
           setLastMoveTime(Date.now())
           setIsMoving(false)
@@ -187,8 +222,11 @@ export default function GradientOutlineSphere() {
 
   // Configuration des écouteurs d'événements
   useEffect(() => {
-    return setupEventListeners()
-  }, [setupEventListeners])
+    if (!containerRef.current) return
+
+    const cleanup = setupEventListeners(containerRef.current)
+    return cleanup
+  }, [setupEventListeners]) // Add setupEventListeners to dependencies
 
   // Réinitialisation du surlignage lors de la sélection d'une trajectoire
   useEffect(() => {
@@ -232,6 +270,7 @@ export default function GradientOutlineSphere() {
         setControlsEnabled={setControlsEnabled}
         performZoom={performZoom}
         onStatisticsClick={handleOpenStatistics}
+        isIntroAnimationPlaying={isIntroAnimationPlaying}
       />
 
       {/* Message d'erreur de filtrage */}
@@ -258,13 +297,11 @@ export default function GradientOutlineSphere() {
 
       {/* Indicateur de chargement pendant la mise à jour des montagnes */}
       {(isUpdatingMountains || isLoading) && (
-        <div className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-40 pointer-events-none">
           <div className="bg-black/70 backdrop-blur-sm rounded-lg p-4 flex items-center space-x-3">
             <div className="w-5 h-5 border-2 border-t-white border-r-white border-b-transparent border-l-transparent rounded-full animate-spin"></div>
             <span className="text-white text-sm">
-              {isLoading
-                ? `Chargement depuis ${dataSource === "api" ? "API" : "données générées"}...`
-                : "Mise à jour en cours..."}
+              {isLoading ? "Chargement depuis l'API..." : "Mise à jour en cours..."}
             </span>
           </div>
         </div>

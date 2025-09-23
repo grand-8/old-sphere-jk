@@ -8,7 +8,7 @@ import {
   calculateDynamicAmplification,
   calculatePointHeight,
   getUnifiedMountainConfig,
-} from "@/lib/mountain-calculations"
+} from "@/utils/sphere/mountain-calculations"
 
 const COLORS = {
   darkBlue: new THREE.Color("#1a2b4d"),

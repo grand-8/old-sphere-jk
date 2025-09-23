@@ -17,6 +17,9 @@ export interface VisualizationState {
   lastMoveTime: number
   setLastMoveTime: (time: number) => void
 
+  isIntroAnimationPlaying: boolean
+  setIsIntroAnimationPlaying: (playing: boolean) => void
+
   // États de chargement et erreurs
   isUpdatingMountains: boolean
   setIsUpdatingMountains: (updating: boolean) => void
@@ -44,6 +47,8 @@ export function useVisualizationState(): VisualizationState {
   const [isMoving, setIsMoving] = useState(false)
   const [lastMoveTime, setLastMoveTime] = useState(Date.now() - 1000) // Initialiser dans le passé
 
+  const [isIntroAnimationPlaying, setIsIntroAnimationPlaying] = useState(true)
+
   // États de chargement et erreurs
   const [isUpdatingMountains, setIsUpdatingMountains] = useState(false)
   const [filterError, setFilterError] = useState<string | null>(null)
@@ -66,6 +71,9 @@ export function useVisualizationState(): VisualizationState {
     setIsMoving,
     lastMoveTime,
     setLastMoveTime,
+
+    isIntroAnimationPlaying,
+    setIsIntroAnimationPlaying,
 
     // États de chargement et erreurs
     isUpdatingMountains,

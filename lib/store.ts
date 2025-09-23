@@ -3,10 +3,15 @@ import type { LifeTrajectory } from "./data-service"
 import { filterTrajectories } from "./filter-utils"
 import { dataService } from "./data-service"
 
+export type ViewType = "sphere" | "linear"
+
 interface LifeTrajectoryState {
   // États existants
   selectedPerson: LifeTrajectory | null
   setSelectedPerson: (person: LifeTrajectory | null) => void
+
+  currentView: ViewType
+  setCurrentView: (view: ViewType) => void
 
   // États pour la recherche
   searchQuery: string
@@ -19,6 +24,9 @@ interface LifeTrajectoryState {
   isLoading: boolean
   error: string | null
 
+  isIntroAnimationPlaying: boolean
+  setIsIntroAnimationPlaying: (playing: boolean) => void
+
   loadData: () => Promise<void>
   refreshData: () => Promise<void>
 }
@@ -27,6 +35,9 @@ export const useLifeTrajectoryStore = create<LifeTrajectoryState>((set, get) => 
   // États existants
   selectedPerson: null,
   setSelectedPerson: (selectedPerson) => set({ selectedPerson }),
+
+  currentView: "sphere",
+  setCurrentView: (currentView) => set({ currentView }),
 
   // États pour la recherche
   searchQuery: "",
@@ -47,6 +58,9 @@ export const useLifeTrajectoryStore = create<LifeTrajectoryState>((set, get) => 
   trajectoryData: [],
   isLoading: false,
   error: null,
+
+  isIntroAnimationPlaying: true,
+  setIsIntroAnimationPlaying: (isIntroAnimationPlaying) => set({ isIntroAnimationPlaying }),
 
   loadData: async () => {
     const { searchQuery } = get()
