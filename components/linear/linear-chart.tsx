@@ -16,6 +16,7 @@ import {
   createAverageDataset,
   createProgressionDataset,
   calculateJobtrekToFinalProgression,
+  createSimplifiedAverageData,
 } from "@/utils/linear/chart-data-transform"
 import { StatisticsModal } from "@/components/statistics-modal"
 import { calculateJobtrekStatistics } from "@/lib/statistics-calculator"
@@ -261,67 +262,23 @@ export function LinearChart({ trajectories }: LinearChartProps) {
 
     const { sortedYears, processedTrajectories } = processTrajectories(trajectories, isThreePointView)
 
-    const trajectoryGroups = processedTrajectories.reduce(
-      (groups, trajectory) => {
-        const type = trajectory.typeMesure || "Unknown"
-        if (!groups[type]) groups[type] = []
-        groups[type].push(trajectory)
-        return groups
-      },
-      {} as Record<string, any[]>,
-    )
-
-    const datasets = []
-    const groupColors = {
-      MIST: { base: PEAK_COLORS.blue, opacity: 0.6 },
-      JobtrekSchool: { base: PEAK_COLORS.green, opacity: 0.6 },
-      Unknown: { base: PEAK_COLORS.accent, opacity: 0.4 },
-    }
-
-    Object.entries(trajectoryGroups).forEach(([groupType, groupTrajectories]) => {
-      const groupColor = groupColors[groupType as keyof typeof groupColors] || groupColors.Unknown
-
-      groupTrajectories.forEach((trajectory, index) => {
-        const isHighlighted = hoveredLineId === trajectory.id
-        const baseOpacity = isHighlighted ? 1.0 : hoveredLineId ? 0.2 : groupColor.opacity
-        const lineWidth = isHighlighted ? 3 : 1.5
-
-        datasets.push(
-          createTrajectoryDataset(trajectory, sortedYears, isThreePointView, "highlighted", isHighlighted, {
-            borderColor: applyPeakFinesse(groupColor.base, baseOpacity),
-            backgroundColor: applyPeakFinesse(groupColor.base, baseOpacity * 0.3),
-            borderWidth: lineWidth,
-            pointRadius: isHighlighted ? 4 : 2,
-            pointHoverRadius: 6,
-            tension: 0.1, // Add slight curve for better visual flow
-          }),
-        )
-      })
+    const datasets = processedTrajectories.map((trajectory) => {
+      const isHighlighted = hoveredLineId === trajectory.id
+      return createTrajectoryDataset(trajectory, sortedYears, isThreePointView, "highlighted", isHighlighted)
     })
 
     if (trajectories.length > 1) {
       const averageData = calculateAverageData(sortedYears, processedTrajectories, trajectories, isThreePointView)
-      const progressionData = calculateProgressionData(sortedYears, averageData, trajectories)
 
-      if (!isThreePointView) {
-        datasets.push(
-          createAverageDataset(averageData, "highlighted", {
-            borderWidth: 3,
-            borderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.8),
-            backgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.1),
-            pointRadius: 5,
-            borderDash: [5, 5], // Dashed line for average to distinguish from trajectories
-          }),
-        )
+      if (isThreePointView) {
+        // In simplified view, show normal average line
+        const progressionData = calculateProgressionData(sortedYears, averageData, trajectories)
+        datasets.push(createProgressionDataset(progressionData, "highlighted", averageData))
+      } else {
+        // In full view, show simplified average line (first to last point only)
+        const simplifiedAverageData = createSimplifiedAverageData(averageData)
+        datasets.push(createAverageDataset(simplifiedAverageData, "highlighted"))
       }
-      datasets.push(
-        createProgressionDataset(progressionData, "highlighted", averageData, {
-          borderWidth: 2,
-          borderColor: applyPeakFinesse(PEAK_COLORS.accent, 0.9),
-          backgroundColor: applyPeakFinesse(PEAK_COLORS.accent, 0.2),
-          yAxisID: "y1",
-        }),
-      )
     }
 
     return {
@@ -543,52 +500,8 @@ export function LinearChart({ trajectories }: LinearChartProps) {
 
   const statistics = showStatistics ? calculateJobtrekStatistics(trajectories) : null
 
-  const renderLegend = () => {
-    const trajectoryGroups = trajectories.reduce(
-      (groups, trajectory) => {
-        const type = trajectory.typeMesure || "Unknown"
-        if (!groups[type]) groups[type] = 0
-        groups[type]++
-        return groups
-      },
-      {} as Record<string, number>,
-    )
-
-    const groupColors = {
-      MIST: PEAK_COLORS.blue,
-      JobtrekSchool: PEAK_COLORS.green,
-      Unknown: PEAK_COLORS.accent,
-    }
-
-    return (
-      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 bg-black/70 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-        <div className="flex gap-4 text-white text-sm">
-          {Object.entries(trajectoryGroups).map(([type, count]) => (
-            <div key={type} className="flex items-center gap-2">
-              <div
-                className="w-3 h-0.5 rounded"
-                style={{
-                  backgroundColor: applyPeakFinesse(
-                    groupColors[type as keyof typeof groupColors] || groupColors.Unknown,
-                    0.8,
-                  ),
-                }}
-              />
-              <span>
-                {type} ({count})
-              </span>
-            </div>
-          ))}
-        </div>
-        <div className="text-xs text-gray-400 mt-1 text-center">Survolez une ligne pour la mettre en évidence</div>
-      </div>
-    )
-  }
-
   return (
     <div className="w-full h-full bg-transparent relative pb-16 pr-8">
-      {renderLegend()}
-
       <div
         className="fixed z-50 pointer-events-none"
         style={{

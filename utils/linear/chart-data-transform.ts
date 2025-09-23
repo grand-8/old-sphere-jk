@@ -171,14 +171,6 @@ export function createTrajectoryDataset(
   isThreePointView: boolean,
   hoveredTrajectory: string | null,
   isHighlighted: boolean,
-  customStyles?: {
-    borderColor?: string
-    backgroundColor?: string
-    borderWidth?: number
-    pointRadius?: number
-    pointHoverRadius?: number
-    tension?: number
-  },
 ) {
   const data = sortedYears.map((yearOrLabel, index) => {
     if (isThreePointView) {
@@ -192,55 +184,43 @@ export function createTrajectoryDataset(
 
   const baseOpacity = hoveredTrajectory ? (isHighlighted ? 1 : 0.15) : 0.6
 
-  const defaultBorderColor = (context: any) => {
-    const chart = context.chart
-    const { ctx, chartArea } = chart
-    if (!chartArea) return applyPeakFinesse(PEAK_COLORS.blue, 0.3)
-    return createPeakInspiredGradient(ctx, chartArea, data, isHighlighted)
-  }
-
-  const defaultBackgroundColor = (context: any) => {
-    const chart = context.chart
-    const { ctx, chartArea } = chart
-    if (!chartArea) return applyPeakFinesse(PEAK_COLORS.blue, 0.5)
-    const gradient = createPeakInspiredGradient(ctx, chartArea, data, isHighlighted)
-    return gradient
-  }
-
   return {
     label: trajectory.name,
     data,
-    borderColor: customStyles?.borderColor || defaultBorderColor,
-    backgroundColor: customStyles?.backgroundColor || defaultBackgroundColor,
-    borderWidth:
-      customStyles?.borderWidth ||
-      (isHighlighted
-        ? DATASET_STYLES.trajectory.borderWidth.highlighted
-        : DATASET_STYLES.trajectory.borderWidth.normal),
-    pointRadius:
-      customStyles?.pointRadius ||
-      (isHighlighted
-        ? DATASET_STYLES.trajectory.pointRadius.highlighted
-        : DATASET_STYLES.trajectory.pointRadius.normal),
-    pointHoverRadius: customStyles?.pointHoverRadius || DATASET_STYLES.trajectory.pointHoverRadius,
-    pointBorderColor:
-      customStyles?.borderColor ||
-      ((context: any) => {
-        const chart = context.chart
-        const { ctx, chartArea } = chart
-        if (!chartArea) return applyPeakFinesse(PEAK_COLORS.blue, 0.2)
-        return createPeakInspiredGradient(ctx, chartArea, data, isHighlighted)
-      }),
-    pointBackgroundColor:
-      customStyles?.backgroundColor ||
-      ((context: any) => {
-        const chart = context.chart
-        const { ctx, chartArea } = chart
-        if (!chartArea) return applyPeakFinesse(PEAK_COLORS.blue, 0.4)
-        return createPeakInspiredGradient(ctx, chartArea, data, isHighlighted)
-      }),
+    borderColor: (context: any) => {
+      const chart = context.chart
+      const { ctx, chartArea } = chart
+      if (!chartArea) return applyPeakFinesse(PEAK_COLORS.blue, 0.3)
+      return createPeakInspiredGradient(ctx, chartArea, data, isHighlighted)
+    },
+    backgroundColor: (context: any) => {
+      const chart = context.chart
+      const { ctx, chartArea } = chart
+      if (!chartArea) return applyPeakFinesse(PEAK_COLORS.blue, 0.5)
+      const gradient = createPeakInspiredGradient(ctx, chartArea, data, isHighlighted)
+      return gradient
+    },
+    borderWidth: isHighlighted
+      ? DATASET_STYLES.trajectory.borderWidth.highlighted
+      : DATASET_STYLES.trajectory.borderWidth.normal,
+    pointRadius: isHighlighted
+      ? DATASET_STYLES.trajectory.pointRadius.highlighted
+      : DATASET_STYLES.trajectory.pointRadius.normal,
+    pointHoverRadius: DATASET_STYLES.trajectory.pointHoverRadius,
+    pointBorderColor: (context: any) => {
+      const chart = context.chart
+      const { ctx, chartArea } = chart
+      if (!chartArea) return applyPeakFinesse(PEAK_COLORS.blue, 0.2)
+      return createPeakInspiredGradient(ctx, chartArea, data, isHighlighted)
+    },
+    pointBackgroundColor: (context: any) => {
+      const chart = context.chart
+      const { ctx, chartArea } = chart
+      if (!chartArea) return applyPeakFinesse(PEAK_COLORS.blue, 0.4)
+      return createPeakInspiredGradient(ctx, chartArea, data, isHighlighted)
+    },
     pointBorderWidth: DATASET_STYLES.trajectory.pointBorderWidth,
-    tension: customStyles?.tension || DATASET_STYLES.trajectory.tension,
+    tension: DATASET_STYLES.trajectory.tension,
     fill: DATASET_STYLES.trajectory.fill,
     spanGaps: DATASET_STYLES.trajectory.spanGaps,
     trajectoryId: trajectory.id,
@@ -251,51 +231,36 @@ export function createTrajectoryDataset(
   }
 }
 
-export function createAverageDataset(
-  averageData: (number | null)[],
-  hoveredTrajectory: string | null,
-  customStyles?: {
-    borderColor?: string
-    backgroundColor?: string
-    borderWidth?: number
-    pointRadius?: number
-    borderDash?: number[]
-  },
-) {
-  const defaultBorderColor = (context: any) => {
-    const chart = context.chart
-    const { ctx, chartArea } = chart
-    if (!chartArea) return applyPeakFinesse(PEAK_COLORS.highlight, 0)
-    const gradient = ctx.createLinearGradient(chartArea.left, 0, chartArea.right, 0)
-    const whiteColor = applyPeakFinesse(PEAK_COLORS.highlight, 0)
-    gradient.addColorStop(0, whiteColor)
-    gradient.addColorStop(1, whiteColor)
-    return gradient
-  }
-
+export function createAverageDataset(averageData: (number | null)[], hoveredTrajectory: string | null) {
   return {
     label: "Moyenne de tous les parcours",
     data: averageData,
-    borderColor: customStyles?.borderColor || defaultBorderColor,
-    backgroundColor: customStyles?.backgroundColor || applyPeakFinesse(PEAK_COLORS.highlight, 0.3),
+    borderColor: (context: any) => {
+      const chart = context.chart
+      const { ctx, chartArea } = chart
+      if (!chartArea) return applyPeakFinesse(PEAK_COLORS.highlight, 0)
+      const gradient = ctx.createLinearGradient(chartArea.left, 0, chartArea.right, 0)
+      const whiteColor = applyPeakFinesse(PEAK_COLORS.highlight, 0)
+      gradient.addColorStop(0, whiteColor)
+      gradient.addColorStop(1, whiteColor)
+      return gradient
+    },
+    backgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.3),
     borderWidth:
-      customStyles?.borderWidth ||
-      (hoveredTrajectory === "average"
+      hoveredTrajectory === "average"
         ? DATASET_STYLES.average.borderWidth.highlighted
-        : DATASET_STYLES.average.borderWidth.normal),
+        : DATASET_STYLES.average.borderWidth.normal,
     borderDash:
-      customStyles?.borderDash ||
-      (hoveredTrajectory === "average"
+      hoveredTrajectory === "average"
         ? DATASET_STYLES.average.borderDash.highlighted
-        : DATASET_STYLES.average.borderDash.normal),
+        : DATASET_STYLES.average.borderDash.normal,
     pointRadius:
-      customStyles?.pointRadius ||
-      (hoveredTrajectory === "average"
+      hoveredTrajectory === "average"
         ? DATASET_STYLES.average.pointRadius.highlighted
-        : DATASET_STYLES.average.pointRadius.normal),
+        : DATASET_STYLES.average.pointRadius.normal,
     pointHoverRadius: DATASET_STYLES.average.pointHoverRadius,
-    pointBorderColor: customStyles?.borderColor || applyPeakFinesse(PEAK_COLORS.highlight, 0),
-    pointBackgroundColor: customStyles?.backgroundColor || applyPeakFinesse(PEAK_COLORS.highlight, 0.2),
+    pointBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0),
+    pointBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.2),
     pointBorderWidth: DATASET_STYLES.average.pointBorderWidth,
     tension: DATASET_STYLES.average.tension,
     fill: DATASET_STYLES.average.fill,
@@ -317,34 +282,25 @@ export function createProgressionDataset(
   progressionData: (number | null)[],
   hoveredTrajectory: string | null,
   averageData?: (number | null)[],
-  customStyles?: {
-    borderColor?: string
-    backgroundColor?: string
-    borderWidth?: number
-    yAxisID?: string
-  },
 ) {
-  const defaultBorderColor = (context: any) => {
-    const chart = context.chart
-    const { ctx, chartArea } = chart
-    if (!chartArea) return applyPeakFinesse(PEAK_COLORS.accent, 0)
-    const gradient = ctx.createLinearGradient(chartArea.left, 0, chartArea.right, 0)
-    const accentColor = applyPeakFinesse(PEAK_COLORS.accent, 0)
-    gradient.addColorStop(0, accentColor)
-    gradient.addColorStop(1, accentColor)
-    return gradient
-  }
-
   return {
     label: "Progression relative (%)",
     data: progressionData,
-    borderColor: customStyles?.borderColor || defaultBorderColor,
-    backgroundColor: customStyles?.backgroundColor || applyPeakFinesse(PEAK_COLORS.accent, 0.3),
+    borderColor: (context: any) => {
+      const chart = context.chart
+      const { ctx, chartArea } = chart
+      if (!chartArea) return applyPeakFinesse(PEAK_COLORS.accent, 0)
+      const gradient = ctx.createLinearGradient(chartArea.left, 0, chartArea.right, 0)
+      const accentColor = applyPeakFinesse(PEAK_COLORS.accent, 0)
+      gradient.addColorStop(0, accentColor)
+      gradient.addColorStop(1, accentColor)
+      return gradient
+    },
+    backgroundColor: applyPeakFinesse(PEAK_COLORS.accent, 0.3),
     borderWidth:
-      customStyles?.borderWidth ||
-      (hoveredTrajectory === "progression"
+      hoveredTrajectory === "progression"
         ? DATASET_STYLES.progression.borderWidth.highlighted
-        : DATASET_STYLES.progression.borderWidth.normal),
+        : DATASET_STYLES.progression.borderWidth.normal,
     borderDash:
       hoveredTrajectory === "progression"
         ? DATASET_STYLES.progression.borderDash.highlighted
@@ -354,10 +310,10 @@ export function createProgressionDataset(
         ? DATASET_STYLES.progression.pointRadius.highlighted
         : DATASET_STYLES.progression.pointRadius.normal,
     pointHoverRadius: DATASET_STYLES.progression.pointHoverRadius,
-    pointBorderColor: customStyles?.borderColor || applyPeakFinesse(PEAK_COLORS.accent, 0),
-    pointBackgroundColor: customStyles?.backgroundColor || applyPeakFinesse(PEAK_COLORS.accent, 0.2),
+    pointBorderColor: applyPeakFinesse(PEAK_COLORS.accent, 0),
+    pointBackgroundColor: applyPeakFinesse(PEAK_COLORS.accent, 0.2),
     pointBorderWidth: DATASET_STYLES.progression.pointBorderWidth,
-    tension: customStyles?.tension || DATASET_STYLES.progression.tension,
+    tension: DATASET_STYLES.progression.tension,
     fill: DATASET_STYLES.progression.fill,
     spanGaps: DATASET_STYLES.progression.spanGaps,
     trajectoryId: "progression",
@@ -368,7 +324,7 @@ export function createProgressionDataset(
         : DATASET_STYLES.progression.opacity.normal,
     progressionData: progressionData,
     actualScoreData: averageData || [],
-    yAxisID: customStyles?.yAxisID || "y1",
+    yAxisID: "y1",
     isAverage: false,
     isProgression: true,
   }
@@ -413,7 +369,7 @@ function calculateBeforeToJobtrekProgression(trajectories: LifeTrajectory[]): nu
   return validTrajectories > 0 ? Math.round(totalImprovements / validTrajectories) : 0
 }
 
-export function calculateJobtrekToFinalProgression(trajectories: LifeTrajectory[]): number {
+function calculateJobtrekToFinalProgression(trajectories: LifeTrajectory[]): number {
   if (!trajectories || trajectories.length === 0) return 0
 
   let totalImprovements = 0
@@ -434,4 +390,26 @@ export function calculateJobtrekToFinalProgression(trajectories: LifeTrajectory[
   })
 
   return validTrajectories > 0 ? Math.round(totalImprovements / validTrajectories) : 0
+}
+
+export function createSimplifiedAverageData(averageData: (number | null)[]): (number | null)[] {
+  if (averageData.length <= 2) return averageData
+
+  // Find first and last non-null values
+  const firstNonNullIndex = averageData.findIndex((value) => value !== null)
+  const lastNonNullIndex =
+    averageData
+      .map((value, index) => ({ value, index }))
+      .filter((item) => item.value !== null)
+      .pop()?.index ?? -1
+
+  if (firstNonNullIndex === -1 || lastNonNullIndex === -1) return averageData
+
+  // Create array with nulls except for first and last points
+  return averageData.map((value, index) => {
+    if (index === firstNonNullIndex || index === lastNonNullIndex) {
+      return value
+    }
+    return null
+  })
 }
