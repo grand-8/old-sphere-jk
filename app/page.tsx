@@ -1,11 +1,26 @@
 "use client"
 
-import { Suspense, useState, useEffect } from "react"
+import { useState, useEffect } from "react"
+import dynamic from "next/dynamic"
 import { ThemeLoader } from "@/components/ui/theme-loader"
 import { useLifeTrajectoryStore } from "@/lib/store"
 import { ViewSwitcher } from "@/components/shared/view-switcher"
-import { SphereView } from "@/components/sphere/sphere-view"
-import { LinearView } from "@/components/linear/linear-view"
+
+const SphereView = dynamic(
+  () => import("@/components/sphere/sphere-view").then((mod) => ({ default: mod.SphereView })),
+  {
+    ssr: false,
+    loading: () => <ThemeLoader />,
+  },
+)
+
+const LinearView = dynamic(
+  () => import("@/components/linear/linear-view").then((mod) => ({ default: mod.LinearView })),
+  {
+    ssr: false,
+    loading: () => <ThemeLoader />,
+  },
+)
 
 export default function Home() {
   const [hasError, setHasError] = useState(false)
@@ -101,7 +116,7 @@ export default function Home() {
         <ViewSwitcher isIntroAnimationPlaying={isIntroAnimationPlaying} />
       </div>
 
-      <Suspense fallback={<ThemeLoader />}>{currentView === "sphere" ? <SphereView /> : <LinearView />}</Suspense>
+      {currentView === "sphere" ? <SphereView /> : <LinearView />}
     </main>
   )
 }
