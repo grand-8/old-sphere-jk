@@ -22,11 +22,13 @@ const COLORS = {
  * @returns true si les coordonnées sont dans une zone protégée
  */
 function isInProtectedZone(x: number, y: number): boolean {
+  if (typeof window === "undefined") return false
+
   // Zone en haut à gauche (compteur)
   if (x < 200 && y < 100) return true
 
   // Zone en haut à droite (recherche, toggle et zoom) - élargie
-  if (x > window.innerWidth - 450 && y < 100) return true
+  if (typeof window !== "undefined" && x > window.innerWidth - 450 && y < 100) return true
 
   return false
 }
@@ -182,6 +184,8 @@ export function useMouseEvents(
    */
   const handleMouseMove = useCallback(
     (event: MouseEvent) => {
+      if (typeof window === "undefined") return
+
       const isUIElement = (event.target as HTMLElement).closest('[data-ui-element="true"]')
       const isProtectedZone = isInProtectedZone(event.clientX, event.clientY)
 
@@ -220,8 +224,10 @@ export function useMouseEvents(
       }
 
       const mouse = new THREE.Vector2()
-      mouse.x = (event.clientX / window.innerWidth) * 2 - 1
-      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
+      if (typeof window !== "undefined") {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
+      }
 
       if (!cameraRef.current || !sceneRef.current) {
         return

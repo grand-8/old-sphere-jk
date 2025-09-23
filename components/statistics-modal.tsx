@@ -50,11 +50,12 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
       borderWidth: 1,
       textStyle: { color: "#fff" },
       formatter: (params: any) => {
-        const labels = ["Début parcours", "Début Jobtrek", "Impact final"]
+        const labels = ["Avant la mesure", "Début Jobtrek", "Impact final"]
         const isMist = params.seriesName === "MIST Jobtrek"
+        const measureName = isMist ? "MIST" : "Jobtrekschool"
 
         if (params.dataIndex === 0) {
-          return `${labels[params.dataIndex]} (${params.seriesName})`
+          return `Avant la ${measureName} (${params.seriesName})`
         } else if (params.dataIndex === 1) {
           return `${labels[params.dataIndex]} (${params.seriesName})`
         } else {
@@ -84,7 +85,7 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
     },
     xAxis: {
       type: "category",
-      data: ["Début", "Jobtrek", "Après Jobtrek"],
+      data: ["Avant", "Jobtrek", "Après Jobtrek"],
       axisLine: { lineStyle: { color: "#374151" } },
       axisTick: { lineStyle: { color: "#374151" } },
       axisLabel: { color: "#9ca3af", fontSize: 12 },
@@ -213,7 +214,7 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
         <div className="p-6">
           {/* Grille 2x2 pour les 2 premières statistiques */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-{/* Section 2 : Amélioration moyenne */}
+            {/* Section 2 : Amélioration moyenne */}
             <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
               <div className="text-gray-400 text-sm mb-4">Amélioration moyenne</div>
               <div className="h-32 flex flex-col items-center justify-center">
@@ -228,7 +229,6 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
                 <div className="text-gray-300 text-center mb-4">d'amélioration moyenne après intervention Jobtrek</div>
               </div>
             </div>
-
 
             {/* Section 1 : Parcours post-Jobtrek */}
             <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
@@ -260,8 +260,6 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
                 <div className="text-gray-300 text-s text-center">Impact du parcours après intervention Jobtrek</div>
               </div>
             </div>
-
-            
           </div>
 
           <div className="mb-6">
@@ -271,16 +269,10 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 rounded-full bg-green-500"></div>
                   <div className="text-white text-sm font-medium">MIST Jobtrek</div>
-                  <div className="text-gray-400 text-xs">
-                    ({statistics?.measureDistribution.mistJobtrek || 0} parcours)
-                  </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 rounded-full bg-blue-500"></div>
                   <div className="text-white text-sm font-medium">Jobtrekschool</div>
-                  <div className="text-gray-400 text-xs">
-                    ({statistics?.measureDistribution.jobtrekSchool || 0} parcours)
-                  </div>
                 </div>
               </div>
               <div className="h-48">

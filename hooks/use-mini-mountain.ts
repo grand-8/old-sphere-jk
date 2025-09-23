@@ -8,7 +8,7 @@ import {
   calculateDynamicAmplification,
   calculatePointHeight,
   getUnifiedMountainConfig,
-} from "@/lib/mountain-calculations"
+} from "@/utils/sphere/mountain-calculations"
 
 const COLORS = {
   darkBlue: new THREE.Color("#1a2b4d"),
@@ -180,7 +180,7 @@ export function useMiniMountain(trajectory: LifeTrajectory | null): UseMiniMount
   }, [])
 
   useEffect(() => {
-    if (!canvasRef.current || !trajectory) return
+    if (!canvasRef.current || !trajectory || typeof window === "undefined") return
 
     const scene = new THREE.Scene()
     sceneRef.current = scene
@@ -196,7 +196,11 @@ export function useMiniMountain(trajectory: LifeTrajectory | null): UseMiniMount
       alpha: true,
     })
     renderer.setSize(128, 128)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    if (typeof window !== "undefined") {
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    } else {
+      renderer.setPixelRatio(1)
+    }
     renderer.setClearColor(0x000000, 0)
     rendererRef.current = renderer
 

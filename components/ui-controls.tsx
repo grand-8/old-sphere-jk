@@ -2,9 +2,10 @@
 
 import type React from "react"
 import { RefreshCw } from "lucide-react"
-import { SearchInput } from "@/components/search-input"
-import { Counter } from "@/components/counter"
-import { StatisticsButton } from "@/components/statistics-button"
+import { SearchInput } from "@/components/shared/search-input"
+import { Counter } from "@/components/shared/counter"
+import { StatisticsButton } from "@/components/shared/statistics-button"
+import { InfoModal } from "@/components/shared/info-modal"
 
 interface UIControlsProps {
   handleUIEvent: (e: React.MouseEvent) => void
@@ -14,6 +15,7 @@ interface UIControlsProps {
   setControlsEnabled: (enabled: boolean) => void
   performZoom: (zoomIn: boolean, onComplete?: () => void) => void
   onStatisticsClick?: () => void
+  isIntroAnimationPlaying?: boolean
 }
 
 export function UIControls({
@@ -24,20 +26,32 @@ export function UIControls({
   setControlsEnabled,
   performZoom,
   onStatisticsClick,
+  isIntroAnimationPlaying = false,
 }: UIControlsProps) {
+  const visibilityClasses = isIntroAnimationPlaying
+    ? "opacity-0 pointer-events-none"
+    : "opacity-100 pointer-events-auto"
+
+  const transitionClasses = "transition-all duration-700 ease-out"
+
   return (
     <div className="fixed inset-0 pointer-events-none">
       {/* Compteur en haut à gauche */}
-      <div className="absolute top-4 left-4 pointer-events-auto z-50" style={{ isolation: "isolate" }}>
+      <div
+        className={`absolute top-4 left-4 z-50 ${visibilityClasses} ${transitionClasses}`}
+        style={{ isolation: "isolate" }}
+      >
         <Counter />
       </div>
 
       {/* Contrôles en haut à droite */}
       <div
-        className="absolute top-4 right-4 flex items-center gap-3 pointer-events-auto"
+        className={`absolute top-4 right-4 flex items-center gap-3 ${visibilityClasses} ${transitionClasses}`}
         style={{ isolation: "isolate" }}
         data-ui-element="true"
       >
+        <InfoModal onMouseDown={handleUIEvent} onMouseMove={handleUIEvent} />
+
         {onStatisticsClick && (
           <StatisticsButton onClick={onStatisticsClick} onMouseDown={handleUIEvent} onMouseMove={handleUIEvent} />
         )}

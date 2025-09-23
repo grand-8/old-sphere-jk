@@ -3,13 +3,14 @@
 import type React from "react"
 import { useCallback } from "react"
 import * as THREE from "three"
-import type { VisualizationState } from "./use-visualization-state"
+import type { VisualizationState } from "../shared/use-visualization-state"
 import type { UseThreeSceneReturn } from "./use-three-scene"
 import type { UseMouseEventsReturn } from "./use-mouse-events"
 
 const CAMERA_POSITIONS = {
   DEFAULT: 7,
   CENTER: 0,
+  INTRO: 18,
 }
 
 /**
@@ -19,6 +20,8 @@ const CAMERA_POSITIONS = {
  * @returns true si les coordonnées sont dans une zone protégée
  */
 function isInProtectedZone(x: number, y: number): boolean {
+  if (typeof window === "undefined") return false
+
   // Zone en haut à gauche (compteur)
   if (x < 200 && y < 100) return true
 
@@ -30,6 +33,7 @@ function isInProtectedZone(x: number, y: number): boolean {
 
 interface UseInteractionManagerReturn {
   performZoom: (zoomIn: boolean, onComplete?: () => void) => void
+  performIntroAnimation: (onComplete?: () => void) => void
   handleCloseProfile: (e?: React.MouseEvent) => void
   setupEventListeners: () => () => void
 }
@@ -58,6 +62,8 @@ export function useInteractionManager(
     setIsMoving,
     setLastMoveTime,
     moveTimeoutRef,
+    isIntroAnimationPlaying,
+    setIsIntroAnimationPlaying,
   } = visualizationState
 
   const { cameraRef, controlsRef, sceneRef, isRendering } = threeScene
@@ -165,6 +171,75 @@ export function useInteractionManager(
   )
 
   /**
+   * Effectue l'animation d'introduction de la caméra
+   * @param onComplete - Callback à exécuter une fois l'animation terminée
+   */
+  const performIntroAnimation = useCallback(
+    (onComplete?: () => void) => {
+      if (!cameraRef.current || !controlsRef.current) {
+        return
+      }
+
+      setControlsEnabled(false)
+      setIsIntroAnimationPlaying(true)
+
+      if (controlsRef.current) {
+        controlsRef.current.enabled = false
+      }
+
+      const startPosition = new THREE.Vector3(0, 0, CAMERA_POSITIONS.INTRO)
+      const targetPosition = new THREE.Vector3(0, 0, CAMERA_POSITIONS.DEFAULT)
+
+      cameraRef.current.position.copy(startPosition)
+      cameraRef.current.lookAt(0, 0, 0)
+
+      const startTime = Date.now()
+      const duration = 3000
+
+      const animateIntro = () => {
+        const elapsed = Date.now() - startTime
+        const progress = Math.min(elapsed / duration, 1)
+        const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+        const easedProgress = easeOutCubic(progress)
+
+        const newPosition = new THREE.Vector3().lerpVectors(startPosition, targetPosition, easedProgress)
+
+        if (cameraRef.current) {
+          cameraRef.current.position.copy(newPosition)
+          cameraRef.current.lookAt(0, 0, 0)
+        }
+
+        if (progress < 1) {
+          requestAnimationFrame(animateIntro)
+        } else {
+          setIsIntroAnimationPlaying(false)
+
+          if (controlsRef.current) {
+            controlsRef.current.minDistance = 5
+            controlsRef.current.maxDistance = 20
+            controlsRef.current.target.set(0, 0, 0)
+
+            setTimeout(() => {
+              if (controlsRef.current && isRendering) {
+                controlsRef.current.enabled = true
+                controlsRef.current.update()
+                setControlsEnabled(true)
+              }
+
+              if (onComplete) {
+                onComplete()
+              }
+            }, 100)
+          }
+        }
+      }
+
+      animateIntro()
+    },
+    [cameraRef, controlsRef, isRendering, setControlsEnabled, setIsIntroAnimationPlaying],
+  )
+
+  /**
    * Gère la fermeture du profil/modal
    * @param e - Événement React optionnel
    */
@@ -194,6 +269,10 @@ export function useInteractionManager(
    * @returns Fonction de nettoyage pour supprimer les écouteurs
    */
   const setupEventListeners = useCallback(() => {
+    if (typeof window === "undefined") {
+      return () => {}
+    }
+
     const raycaster = new THREE.Raycaster()
     raycaster.params.Line = { threshold: 0.2 }
     const mouse = new THREE.Vector2()
@@ -224,8 +303,10 @@ export function useInteractionManager(
       }
       lastClickTimeRef.current = now
 
-      mouse.x = (event.clientX / window.innerWidth) * 2 - 1
-      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
+      if (typeof window !== "undefined") {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
+      }
 
       if (!cameraRef.current || !sceneRef.current) {
         return
@@ -274,18 +355,22 @@ export function useInteractionManager(
       }
     }
 
-    window.addEventListener("mousedown", handleMouseDown)
-    window.addEventListener("mousemove", handleMouseMove)
-    window.addEventListener("mouseup", handleMouseUp)
-    window.addEventListener("click", handleClick)
-    window.addEventListener("keydown", handleKeyDown)
+    if (typeof window !== "undefined") {
+      window.addEventListener("mousedown", handleMouseDown)
+      window.addEventListener("mousemove", handleMouseMove)
+      window.addEventListener("mouseup", handleMouseUp)
+      window.addEventListener("click", handleClick)
+      window.addEventListener("keydown", handleKeyDown)
+    }
 
     return () => {
-      window.removeEventListener("mousedown", handleMouseDown)
-      window.removeEventListener("mousemove", handleMouseMove)
-      window.removeEventListener("mouseup", handleMouseUp)
-      window.removeEventListener("click", handleClick)
-      window.removeEventListener("keydown", handleKeyDown)
+      if (typeof window !== "undefined") {
+        window.removeEventListener("mousedown", handleMouseDown)
+        window.removeEventListener("mousemove", handleMouseMove)
+        window.removeEventListener("mouseup", handleMouseUp)
+        window.removeEventListener("click", handleClick)
+        window.removeEventListener("keydown", handleKeyDown)
+      }
 
       if (moveTimeoutRef.current) {
         clearTimeout(moveTimeoutRef.current)
@@ -305,6 +390,7 @@ export function useInteractionManager(
 
   return {
     performZoom,
+    performIntroAnimation,
     handleCloseProfile,
     setupEventListeners,
   }

@@ -31,13 +31,14 @@ export function useThreeScene(containerRef: React.RefObject<HTMLDivElement>): Us
   const [controlsInitialized, setControlsInitialized] = useState(false)
 
   useEffect(() => {
-    if (!containerRef.current) return
+    if (!containerRef.current || typeof window === "undefined") return
 
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0x000000)
     sceneRef.current = scene
 
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000)
+    const aspectRatio = typeof window !== "undefined" ? window.innerWidth / window.innerHeight : 16 / 9
+    const camera = new THREE.PerspectiveCamera(45, aspectRatio, 0.1, 1000)
     camera.position.z = CAMERA_POSITIONS.DEFAULT
     cameraRef.current = camera
 
@@ -49,8 +50,15 @@ export function useThreeScene(containerRef: React.RefObject<HTMLDivElement>): Us
         alpha: true,
         powerPreference: "high-performance",
       })
-      renderer.setSize(window.innerWidth, window.innerHeight)
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+      if (typeof window !== "undefined") {
+        renderer.setSize(window.innerWidth, window.innerHeight)
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+      } else {
+        renderer.setSize(1920, 1080) // Fallback size for SSR
+        renderer.setPixelRatio(1)
+      }
+
       containerRef.current.appendChild(renderer.domElement)
       rendererRef.current = renderer
     } catch (error) {
@@ -155,7 +163,7 @@ export function useThreeScene(containerRef: React.RefObject<HTMLDivElement>): Us
 
     const handleResize = () => {
       try {
-        if (cameraRef.current && rendererRef.current) {
+        if (cameraRef.current && rendererRef.current && typeof window !== "undefined") {
           cameraRef.current.aspect = window.innerWidth / window.innerHeight
           cameraRef.current.updateProjectionMatrix()
           rendererRef.current.setSize(window.innerWidth, window.innerHeight)
@@ -165,16 +173,16 @@ export function useThreeScene(containerRef: React.RefObject<HTMLDivElement>): Us
       }
     }
 
-    window.addEventListener("resize", handleResize)
+    if (typeof window !== "undefined") {
+      window.addEventListener("resize", handleResize)
+    }
 
     return () => {
       setIsRendering(false)
       setControlsInitialized(false)
 
-      window.removeEventListener("resize", handleResize)
-
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
+      if (typeof window !== "undefined") {
+        window.removeEventListener("resize", handleResize)
       }
 
       if (containerRef.current && rendererRef.current) {
