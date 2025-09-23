@@ -231,10 +231,32 @@ export function createTrajectoryDataset(
   }
 }
 
-export function createAverageDataset(averageData: (number | null)[], hoveredTrajectory: string | null) {
+export function createAverageDataset(
+  averageData: (number | null)[],
+  hoveredTrajectory: string | null,
+  isThreePointView?: boolean,
+) {
+  let displayData = averageData
+  if (isThreePointView === false) {
+    // In full display mode, show only first and last points for a straight line
+    const validIndices = averageData.map((value, index) => ({ value, index })).filter((item) => item.value !== null)
+
+    if (validIndices.length >= 2) {
+      const firstIndex = validIndices[0].index
+      const lastIndex = validIndices[validIndices.length - 1].index
+
+      displayData = averageData.map((value, index) => {
+        if (index === firstIndex || index === lastIndex) {
+          return value
+        }
+        return null
+      })
+    }
+  }
+
   return {
     label: "Moyenne de tous les parcours",
-    data: averageData,
+    data: displayData,
     borderColor: (context: any) => {
       const chart = context.chart
       const { ctx, chartArea } = chart
@@ -390,26 +412,4 @@ export function calculateJobtrekToFinalProgression(trajectories: LifeTrajectory[
   })
 
   return validTrajectories > 0 ? Math.round(totalImprovements / validTrajectories) : 0
-}
-
-export function createSimplifiedAverageData(averageData: (number | null)[]): (number | null)[] {
-  if (averageData.length <= 2) return averageData
-
-  // Find first and last non-null values
-  const firstNonNullIndex = averageData.findIndex((value) => value !== null)
-  const lastNonNullIndex =
-    averageData
-      .map((value, index) => ({ value, index }))
-      .filter((item) => item.value !== null)
-      .pop()?.index ?? -1
-
-  if (firstNonNullIndex === -1 || lastNonNullIndex === -1) return averageData
-
-  // Create array with nulls except for first and last points
-  return averageData.map((value, index) => {
-    if (index === firstNonNullIndex || index === lastNonNullIndex) {
-      return value
-    }
-    return null
-  })
 }

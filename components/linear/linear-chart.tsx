@@ -16,7 +16,6 @@ import {
   createAverageDataset,
   createProgressionDataset,
   calculateJobtrekToFinalProgression,
-  createSimplifiedAverageData,
 } from "@/utils/linear/chart-data-transform"
 import { StatisticsModal } from "@/components/statistics-modal"
 import { calculateJobtrekStatistics } from "@/lib/statistics-calculator"
@@ -269,15 +268,12 @@ export function LinearChart({ trajectories }: LinearChartProps) {
 
     if (trajectories.length > 1) {
       const averageData = calculateAverageData(sortedYears, processedTrajectories, trajectories, isThreePointView)
+      const progressionData = calculateProgressionData(sortedYears, averageData, trajectories)
+
+      datasets.push(createAverageDataset(averageData, "highlighted", isThreePointView))
 
       if (isThreePointView) {
-        // In simplified view, show normal average line
-        const progressionData = calculateProgressionData(sortedYears, averageData, trajectories)
         datasets.push(createProgressionDataset(progressionData, "highlighted", averageData))
-      } else {
-        // In full view, show simplified average line (first to last point only)
-        const simplifiedAverageData = createSimplifiedAverageData(averageData)
-        datasets.push(createAverageDataset(simplifiedAverageData, "highlighted"))
       }
     }
 
