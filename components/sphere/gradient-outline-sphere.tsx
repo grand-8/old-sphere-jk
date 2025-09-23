@@ -222,11 +222,8 @@ export default function GradientOutlineSphere() {
 
   // Configuration des écouteurs d'événements
   useEffect(() => {
-    if (!containerRef.current) return
-
-    const cleanup = setupEventListeners(containerRef.current)
-    return cleanup
-  }, [setupEventListeners]) // Add setupEventListeners to dependencies
+    return setupEventListeners()
+  }, [setupEventListeners])
 
   // Réinitialisation du surlignage lors de la sélection d'une trajectoire
   useEffect(() => {
@@ -297,7 +294,7 @@ export default function GradientOutlineSphere() {
 
       {/* Indicateur de chargement pendant la mise à jour des montagnes */}
       {(isUpdatingMountains || isLoading) && (
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-40 pointer-events-none">
+        <div className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none">
           <div className="bg-black/70 backdrop-blur-sm rounded-lg p-4 flex items-center space-x-3">
             <div className="w-5 h-5 border-2 border-t-white border-r-white border-b-transparent border-l-transparent rounded-full animate-spin"></div>
             <span className="text-white text-sm">

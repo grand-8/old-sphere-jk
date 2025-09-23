@@ -33,7 +33,7 @@ interface UseInteractionManagerReturn {
   performZoom: (zoomIn: boolean, onComplete?: () => void) => void
   performIntroAnimation: (onComplete?: () => void) => void
   handleCloseProfile: (e?: React.MouseEvent) => void
-  setupEventListeners: (containerElement: HTMLElement) => () => void
+  setupEventListeners: () => () => void
 }
 
 /**
@@ -264,128 +264,117 @@ export function useInteractionManager(
 
   /**
    * Configure les écouteurs d'événements pour les interactions utilisateur
-   * @param containerElement - Élément conteneur pour attacher les événements
    * @returns Fonction de nettoyage pour supprimer les écouteurs
    */
-  const setupEventListeners = useCallback(
-    (containerElement: HTMLElement) => {
-      console.log("[v0] setupEventListeners: Attaching event listeners")
-      const raycaster = new THREE.Raycaster()
-      raycaster.params.Line = { threshold: 0.2 }
-      const mouse = new THREE.Vector2()
+  const setupEventListeners = useCallback(() => {
+    const raycaster = new THREE.Raycaster()
+    raycaster.params.Line = { threshold: 0.2 }
+    const mouse = new THREE.Vector2()
 
-      const handleClick = (event: MouseEvent) => {
-        console.log("[v0] handleClick: Click detected", { x: event.clientX, y: event.clientY })
+    const handleClick = (event: MouseEvent) => {
+      if ((event.target as HTMLElement).closest('[data-ui-element="true"]')) {
+        return
+      }
 
-        if ((event.target as HTMLElement).closest('[data-ui-element="true"]')) {
-          console.log("[v0] handleClick: Click on UI element, ignoring")
-          return
-        }
+      if (isInProtectedZone(event.clientX, event.clientY)) {
+        return
+      }
 
-        if (isInProtectedZone(event.clientX, event.clientY)) {
-          console.log("[v0] handleClick: Click in protected zone, ignoring")
-          return
-        }
+      if (!controlsEnabled) {
+        return
+      }
 
-        if (!controlsEnabled) {
-          console.log("[v0] handleClick: Controls disabled, ignoring")
-          return
-        }
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false
+        mouseStartPosRef.current = null
+        return
+      }
 
-        if (isDraggingRef.current) {
-          console.log("[v0] handleClick: Was dragging, resetting")
-          isDraggingRef.current = false
-          mouseStartPosRef.current = null
-          return
-        }
-
-        const now = Date.now()
-        if (now - lastClickTimeRef.current < 300) {
-          console.log("[v0] handleClick: Too soon after last click, ignoring")
-          lastClickTimeRef.current = now
-          return
-        }
+      const now = Date.now()
+      if (now - lastClickTimeRef.current < 300) {
         lastClickTimeRef.current = now
+        return
+      }
+      lastClickTimeRef.current = now
 
-        const rect = containerElement.getBoundingClientRect()
-        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
 
-        if (!cameraRef.current || !sceneRef.current) {
-          console.log("[v0] handleClick: Missing camera or scene")
-          return
-        }
+      if (!cameraRef.current || !sceneRef.current) {
+        return
+      }
 
-        raycaster.setFromCamera(mouse, cameraRef.current)
-        const intersects = raycaster.intersectObjects(sceneRef.current.children, true)
-        console.log("[v0] handleClick: Intersects found:", intersects.length)
+      raycaster.setFromCamera(mouse, cameraRef.current)
+      const intersects = raycaster.intersectObjects(sceneRef.current.children, true)
 
-        if (intersects.length > 0) {
-          for (let i = 0; i < intersects.length; i++) {
-            const intersect = intersects[i]
-            const object = intersect.object
+      if (intersects.length > 0) {
+        for (let i = 0; i < intersects.length; i++) {
+          const intersect = intersects[i]
+          const object = intersect.object
 
-            if (object instanceof THREE.Line && object.userData.isOutline) {
-              const parentGroup = object.userData.parentGroup
-              if (parentGroup) {
-                const metadata = parentGroup.userData
-                console.log("[v0] handleClick: Found trajectory click", metadata)
+          if (object instanceof THREE.Line && object.userData.isOutline) {
+            const parentGroup = object.userData.parentGroup
+            if (parentGroup) {
+              const metadata = parentGroup.userData
 
-                if (metadata.type === "trajectory") {
-                  const trajectory = metadata.data
+              if (metadata.type === "trajectory") {
+                const trajectory = metadata.data
 
-                  if (!isZoomedIn) {
-                    console.log("[v0] handleClick: Zooming in and selecting trajectory")
-                    setControlsEnabled(false)
-                    performZoom(true, () => {
-                      setSelectedTrajectory(trajectory)
-                    })
-                  } else {
-                    console.log("[v0] handleClick: Already zoomed, selecting trajectory")
+                if (!isZoomedIn) {
+                  setControlsEnabled(false)
+                  performZoom(true, () => {
                     setSelectedTrajectory(trajectory)
-                  }
-                  return
+                  })
+                } else {
+                  setSelectedTrajectory(trajectory)
                 }
+                return
               }
             }
           }
         }
       }
+    }
 
-      const handleKeyDown = (event: KeyboardEvent) => {
-        if (
-          document.activeElement &&
-          (document.activeElement.tagName === "INPUT" ||
-            document.activeElement.tagName === "TEXTAREA" ||
-            document.activeElement.tagName === "SELECT")
-        ) {
-          return
-        }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        document.activeElement &&
+        (document.activeElement.tagName === "INPUT" ||
+          document.activeElement.tagName === "TEXTAREA" ||
+          document.activeElement.tagName === "SELECT")
+      ) {
+        return
       }
+    }
 
-      console.log("[v0] setupEventListeners: Adding event listeners to container")
-      containerElement.addEventListener("mousedown", handleMouseDown, { passive: false })
-      containerElement.addEventListener("mousemove", handleMouseMove, { passive: false })
-      containerElement.addEventListener("mouseup", handleMouseUp, { passive: false })
-      containerElement.addEventListener("click", handleClick, { passive: false })
+    window.addEventListener("mousedown", handleMouseDown)
+    window.addEventListener("mousemove", handleMouseMove)
+    window.addEventListener("mouseup", handleMouseUp)
+    window.addEventListener("click", handleClick)
+    window.addEventListener("keydown", handleKeyDown)
 
-      window.addEventListener("keydown", handleKeyDown, { passive: false })
+    return () => {
+      window.removeEventListener("mousedown", handleMouseDown)
+      window.removeEventListener("mousemove", handleMouseMove)
+      window.removeEventListener("mouseup", handleMouseUp)
+      window.removeEventListener("click", handleClick)
+      window.removeEventListener("keydown", handleKeyDown)
 
-      return () => {
-        console.log("[v0] setupEventListeners: Removing event listeners from container")
-        containerElement.removeEventListener("mousedown", handleMouseDown)
-        containerElement.removeEventListener("mousemove", handleMouseMove)
-        containerElement.removeEventListener("mouseup", handleMouseUp)
-        containerElement.removeEventListener("click", handleClick)
-        window.removeEventListener("keydown", handleKeyDown)
-
-        if (moveTimeoutRef.current) {
-          clearTimeout(moveTimeoutRef.current)
-        }
+      if (moveTimeoutRef.current) {
+        clearTimeout(moveTimeoutRef.current)
       }
-    },
-    [handleMouseDown, handleMouseMove, handleMouseUp, performZoom, setControlsEnabled, setSelectedTrajectory],
-  )
+    }
+  }, [
+    controlsEnabled,
+    selectedTrajectory,
+    isZoomedIn,
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+    performZoom,
+    setControlsEnabled,
+    setSelectedTrajectory,
+  ])
 
   return {
     performZoom,

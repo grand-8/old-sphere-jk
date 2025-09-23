@@ -160,26 +160,18 @@ export function useMouseEvents(
    */
   const handleMouseDown = useCallback(
     (event: MouseEvent) => {
-      console.log("[v0] handleMouseDown: Mouse down detected", { x: event.clientX, y: event.clientY })
-
       if ((event.target as HTMLElement).closest('[data-ui-element="true"]')) {
-        console.log("[v0] handleMouseDown: On UI element, ignoring")
         return
       }
 
       if (isInProtectedZone(event.clientX, event.clientY)) {
-        console.log("[v0] handleMouseDown: In protected zone, ignoring")
         return
       }
 
-      if (!controlsEnabled || selectedTrajectory) {
-        console.log("[v0] handleMouseDown: Controls disabled or trajectory selected, ignoring")
-        return
-      }
+      if (!controlsEnabled || selectedTrajectory) return
 
       mouseStartPosRef.current = { x: event.clientX, y: event.clientY }
       isDraggingRef.current = false
-      console.log("[v0] handleMouseDown: Set mouse start position")
     },
     [controlsEnabled, selectedTrajectory],
   )
@@ -266,16 +258,7 @@ export function useMouseEvents(
         resetHighlight()
       }
     },
-    [
-      controlsEnabled,
-      selectedTrajectory,
-      isMoving,
-      resetHighlight,
-      highlightMountainGroup,
-      setLastMoveTime,
-      cameraRef,
-      sceneRef,
-    ],
+    [controlsEnabled, selectedTrajectory, isMoving, resetHighlight, highlightMountainGroup, setLastMoveTime],
   )
 
   /**
@@ -284,22 +267,17 @@ export function useMouseEvents(
    */
   const handleMouseUp = useCallback(
     (event: MouseEvent) => {
-      console.log("[v0] handleMouseUp: Mouse up detected", { x: event.clientX, y: event.clientY })
-
       if ((event.target as HTMLElement).closest('[data-ui-element="true"]')) {
-        console.log("[v0] handleMouseUp: On UI element, ignoring")
         return
       }
 
       if (isInProtectedZone(event.clientX, event.clientY)) {
-        console.log("[v0] handleMouseUp: In protected zone, ignoring")
         return
       }
 
       setTimeout(() => {
         mouseStartPosRef.current = null
         if (isDraggingRef.current) {
-          console.log("[v0] handleMouseUp: Was dragging, resetting")
           isDraggingRef.current = false
           setLastMoveTime(Date.now())
         }

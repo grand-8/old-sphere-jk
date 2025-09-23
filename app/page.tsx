@@ -15,8 +15,6 @@ export default function Home() {
   useEffect(() => {
     setMounted(true)
 
-    if (typeof window === "undefined") return
-
     const handleError = (event: ErrorEvent) => {
       console.error("❌ Global error:", event.error)
       setHasError(true)
@@ -47,22 +45,13 @@ export default function Home() {
           <h2 className="text-2xl font-bold mb-4">❌ Application Error</h2>
           <p className="text-gray-400 mb-4">Something went wrong</p>
           <div className="space-x-2">
-            <button
-              onClick={() => typeof window !== "undefined" && window.location.reload()}
-              className="bg-green-600 px-4 py-2 rounded"
-            >
+            <button onClick={() => window.location.reload()} className="bg-green-600 px-4 py-2 rounded">
               🔄 Reload
             </button>
-            <button
-              onClick={() => typeof window !== "undefined" && (window.location.href = "/simple")}
-              className="bg-blue-600 px-4 py-2 rounded"
-            >
+            <button onClick={() => (window.location.href = "/simple")} className="bg-blue-600 px-4 py-2 rounded">
               Simple Mode
             </button>
-            <button
-              onClick={() => typeof window !== "undefined" && (window.location.href = "/debug")}
-              className="bg-yellow-600 px-4 py-2 rounded"
-            >
+            <button onClick={() => (window.location.href = "/debug")} className="bg-yellow-600 px-4 py-2 rounded">
               Debug Mode
             </button>
           </div>
