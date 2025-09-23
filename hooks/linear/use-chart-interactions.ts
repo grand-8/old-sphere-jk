@@ -223,10 +223,10 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
       const clientX = (event.native as MouseEvent).clientX
       const clientY = (event.native as MouseEvent).clientY
 
-      const isCompleteView = chartData.datasets.length > 10
-      const hoverDistance = isCompleteView ? 8 : 30
+      const isThreePointView = chart.options?.isThreePointView || false
 
-      const closestTrajectoryId = findClosestTrajectoryToMouse(chart, mouseX, mouseY, hoverDistance)
+      const maxDistance = isThreePointView ? 30 : 12
+      const closestTrajectoryId = findClosestTrajectoryToMouse(chart, mouseX, mouseY, maxDistance, isThreePointView)
 
       if (closestTrajectoryId === "progression") {
         const progressionDataset = chartData.datasets.find(

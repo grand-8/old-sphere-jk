@@ -53,27 +53,21 @@ export function findClosestTrajectoryToMouse(
   mouseX: number,
   mouseY: number,
   maxDistance = 15,
+  isThreePointView = false,
 ): string | null {
   let closestTrajectoryId: string | null = null
-  const minDistance = maxDistance
+  let minDistance = maxDistance
 
-  const isCompleteView = chart.data.datasets.length > 10
-  const adjustedMaxDistance = isCompleteView ? Math.min(maxDistance, 8) : maxDistance
+  const effectiveMaxDistance = isThreePointView ? maxDistance : Math.min(maxDistance, 10)
+  minDistance = effectiveMaxDistance
 
-  const candidates: Array<{
-    trajectoryId: string
-    distance: number
-    segmentIndex: number
-    isHighlighted: boolean
-  }> = []
+  const candidates: Array<{ trajectoryId: string; distance: number; datasetIndex: number }> = []
 
   chart.data.datasets.forEach((dataset: any, datasetIndex) => {
     const meta = chart.getDatasetMeta(datasetIndex)
-    if (!meta.visible || !dataset.trajectoryId) return
+    if (!meta.visible) return
 
-    if (dataset.trajectoryId === "average" || dataset.trajectoryId === "progression") return
-
-    const isHighlighted = dataset.borderColor && dataset.borderColor.includes("255") // Check if highlighted
+    if (!dataset.trajectoryId || dataset.isAverage || dataset.isProgression) return
 
     for (let i = 0; i < meta.data.length - 1; i++) {
       const point1 = meta.data[i]
@@ -83,27 +77,19 @@ export function findClosestTrajectoryToMouse(
 
       const distance = calculateDistanceToLineSegment(mouseX, mouseY, point1.x, point1.y, point2.x, point2.y)
 
-      if (distance < adjustedMaxDistance) {
+      if (distance < effectiveMaxDistance) {
         candidates.push({
           trajectoryId: dataset.trajectoryId,
           distance,
-          segmentIndex: i,
-          isHighlighted,
+          datasetIndex,
         })
       }
     }
   })
 
   if (candidates.length > 0) {
-    candidates.sort((a, b) => {
-      // First priority: highlighted trajectories
-      if (a.isHighlighted && !b.isHighlighted) return -1
-      if (!a.isHighlighted && b.isHighlighted) return 1
-
-      // Second priority: distance
-      return a.distance - b.distance
-    })
-
+    // Sort by distance and select the closest one
+    candidates.sort((a, b) => a.distance - b.distance)
     closestTrajectoryId = candidates[0].trajectoryId
   }
 
