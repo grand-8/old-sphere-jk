@@ -319,13 +319,9 @@ export function LinearChart({ trajectories }: LinearChartProps) {
       const mouseX = (event.native as MouseEvent).clientX - rect.left
       const mouseY = (event.native as MouseEvent).clientY - rect.top
 
-      const closestTrajectoryId = findClosestTrajectoryToMouse(
-        chart,
-        mouseX,
-        mouseY,
-        isThreePointView ? 25 : 20, // More generous distance for complete view
-        isThreePointView,
-      )
+      const maxDistance = 30 // Same distance for both simplified and complete views
+
+      const closestTrajectoryId = findClosestTrajectoryToMouse(chart, mouseX, mouseY, maxDistance, isThreePointView)
 
       if (closestTrajectoryId) {
         setHoveredLineId(closestTrajectoryId)
@@ -595,13 +591,13 @@ function findClosestTrajectoryToMouse(
   chart: any,
   mouseX: number,
   mouseY: number,
-  maxDistance = 20,
+  maxDistance = 30, // Increased default distance for better precision
   isThreePointView = false,
 ): string | null {
   let closestTrajectoryId: string | null = null
   let minDistance = maxDistance
 
-  const effectiveMaxDistance = maxDistance // Use same distance for both views
+  const effectiveMaxDistance = maxDistance
   minDistance = effectiveMaxDistance
 
   const candidates: Array<{ trajectoryId: string; distance: number }> = []

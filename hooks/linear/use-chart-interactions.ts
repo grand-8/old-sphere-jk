@@ -225,7 +225,7 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
 
       const isThreePointView = chart.options?.isThreePointView || false
 
-      const maxDistance = isThreePointView ? 30 : 12
+      const maxDistance = 30 // Same distance for both simplified and complete views
       const closestTrajectoryId = findClosestTrajectoryToMouse(chart, mouseX, mouseY, maxDistance, isThreePointView)
 
       if (closestTrajectoryId === "progression") {
