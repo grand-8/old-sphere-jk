@@ -26,7 +26,6 @@ export function ViewSwitcher({ className, isIntroAnimationPlaying = false }: Vie
 
   const handleUIEvent = (e: React.MouseEvent) => {
     e.stopPropagation()
-    e.preventDefault()
   }
 
   return (

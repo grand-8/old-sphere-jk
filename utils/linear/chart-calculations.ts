@@ -53,21 +53,13 @@ export function findClosestTrajectoryToMouse(
   mouseX: number,
   mouseY: number,
   maxDistance = 15,
-  isThreePointView = false,
 ): string | null {
   let closestTrajectoryId: string | null = null
   let minDistance = maxDistance
 
-  const effectiveMaxDistance = isThreePointView ? maxDistance : Math.min(maxDistance, 10)
-  minDistance = effectiveMaxDistance
-
-  const candidates: Array<{ trajectoryId: string; distance: number; datasetIndex: number }> = []
-
   chart.data.datasets.forEach((dataset: any, datasetIndex) => {
     const meta = chart.getDatasetMeta(datasetIndex)
     if (!meta.visible) return
-
-    if (!dataset.trajectoryId || dataset.isAverage || dataset.isProgression) return
 
     for (let i = 0; i < meta.data.length - 1; i++) {
       const point1 = meta.data[i]
@@ -77,21 +69,12 @@ export function findClosestTrajectoryToMouse(
 
       const distance = calculateDistanceToLineSegment(mouseX, mouseY, point1.x, point1.y, point2.x, point2.y)
 
-      if (distance < effectiveMaxDistance) {
-        candidates.push({
-          trajectoryId: dataset.trajectoryId,
-          distance,
-          datasetIndex,
-        })
+      if (distance < minDistance) {
+        minDistance = distance
+        closestTrajectoryId = dataset.trajectoryId
       }
     }
   })
-
-  if (candidates.length > 0) {
-    // Sort by distance and select the closest one
-    candidates.sort((a, b) => a.distance - b.distance)
-    closestTrajectoryId = candidates[0].trajectoryId
-  }
 
   return closestTrajectoryId
 }
