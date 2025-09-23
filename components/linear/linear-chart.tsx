@@ -319,7 +319,10 @@ export function LinearChart({ trajectories }: LinearChartProps) {
       const mouseX = (event.native as MouseEvent).clientX - rect.left
       const mouseY = (event.native as MouseEvent).clientY - rect.top
 
-      const closestTrajectoryId = findClosestTrajectoryToMouse(chart, mouseX, mouseY, 25)
+      const isCompleteView = !isThreePointView
+      const hoverThreshold = isCompleteView ? 12 : 25
+
+      const closestTrajectoryId = findClosestTrajectoryToMouse(chart, mouseX, mouseY, hoverThreshold)
 
       if (closestTrajectoryId) {
         setHoveredLineId(closestTrajectoryId)
@@ -339,7 +342,7 @@ export function LinearChart({ trajectories }: LinearChartProps) {
         handleHover(event, [], chart)
       }
     },
-    [handleHover, trajectories],
+    [handleHover, trajectories, isThreePointView],
   )
 
   const enhancedHandleClick = useCallback(
@@ -587,13 +590,21 @@ export function LinearChart({ trajectories }: LinearChartProps) {
 
 function findClosestTrajectoryToMouse(chart: any, mouseX: number, mouseY: number, maxDistance = 20): string | null {
   let closestTrajectoryId: string | null = null
-  let minDistance = maxDistance
+  const minDistance = maxDistance
+
+  const candidates: Array<{
+    trajectoryId: string
+    distance: number
+    isHighlighted: boolean
+  }> = []
 
   chart.data.datasets.forEach((dataset: any, datasetIndex) => {
     if (dataset.isAverage || dataset.isProgression || !dataset.trajectoryId) return
 
     const meta = chart.getDatasetMeta(datasetIndex)
     if (!meta.visible) return
+
+    const isHighlighted = dataset.borderColor && dataset.borderColor.includes("255")
 
     for (let i = 0; i < meta.data.length - 1; i++) {
       const point1 = meta.data[i] as any
@@ -603,12 +614,25 @@ function findClosestTrajectoryToMouse(chart: any, mouseX: number, mouseY: number
 
       const distance = calculateDistanceToLineSegment(mouseX, mouseY, point1.x, point1.y, point2.x, point2.y)
 
-      if (distance < minDistance) {
-        minDistance = distance
-        closestTrajectoryId = dataset.trajectoryId
+      if (distance < maxDistance) {
+        candidates.push({
+          trajectoryId: dataset.trajectoryId,
+          distance,
+          isHighlighted,
+        })
       }
     }
   })
+
+  if (candidates.length > 0) {
+    candidates.sort((a, b) => {
+      if (a.isHighlighted && !b.isHighlighted) return -1
+      if (!a.isHighlighted && b.isHighlighted) return 1
+      return a.distance - b.distance
+    })
+
+    closestTrajectoryId = candidates[0].trajectoryId
+  }
 
   return closestTrajectoryId
 }
