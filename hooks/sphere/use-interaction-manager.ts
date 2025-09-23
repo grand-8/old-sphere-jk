@@ -20,6 +20,8 @@ const CAMERA_POSITIONS = {
  * @returns true si les coordonnées sont dans une zone protégée
  */
 function isInProtectedZone(x: number, y: number): boolean {
+  if (typeof window === "undefined") return false
+
   // Zone en haut à gauche (compteur)
   if (x < 200 && y < 100) return true
 
@@ -267,6 +269,10 @@ export function useInteractionManager(
    * @returns Fonction de nettoyage pour supprimer les écouteurs
    */
   const setupEventListeners = useCallback(() => {
+    if (typeof window === "undefined") {
+      return () => {}
+    }
+
     const raycaster = new THREE.Raycaster()
     raycaster.params.Line = { threshold: 0.2 }
     const mouse = new THREE.Vector2()

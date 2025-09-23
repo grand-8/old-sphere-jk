@@ -180,7 +180,7 @@ export function useMiniMountain(trajectory: LifeTrajectory | null): UseMiniMount
   }, [])
 
   useEffect(() => {
-    if (!canvasRef.current || !trajectory) return
+    if (!canvasRef.current || !trajectory || typeof window === "undefined") return
 
     const scene = new THREE.Scene()
     sceneRef.current = scene
