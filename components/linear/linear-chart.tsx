@@ -323,7 +323,7 @@ export function LinearChart({ trajectories }: LinearChartProps) {
         chart,
         mouseX,
         mouseY,
-        isThreePointView ? 25 : 8,
+        isThreePointView ? 25 : 20, // More generous distance for complete view
         isThreePointView,
       )
 
@@ -601,7 +601,7 @@ function findClosestTrajectoryToMouse(
   let closestTrajectoryId: string | null = null
   let minDistance = maxDistance
 
-  const effectiveMaxDistance = isThreePointView ? maxDistance : Math.min(maxDistance, 8)
+  const effectiveMaxDistance = maxDistance // Use same distance for both views
   minDistance = effectiveMaxDistance
 
   const candidates: Array<{ trajectoryId: string; distance: number }> = []
