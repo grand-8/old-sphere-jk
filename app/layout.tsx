@@ -11,7 +11,11 @@ export const metadata: Metadata = {
   description: "Trajectoires de vie Jobtrek chaque parcours est une pièce de notre économie",
   authors: [{ name: "therise.ch, Fabien Besson" }],
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
   },
     generator: 'v0.app'
 }
