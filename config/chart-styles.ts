@@ -60,9 +60,9 @@ export const CHART_SCALES = {
       },
     },
     min: 0,
-    max: 200, // Changed max from 100 to 200 to extend Y axis range to 0-200%
+    max: 100, // Changed max from 100 to 200 to extend Y axis range to 0-200%
     ticks: {
-      stepSize: 40, // Changed stepSize from 20 to 40 to maintain appropriate tick intervals for the larger range
+      stepSize: 20, // Changed stepSize from 20 to 40 to maintain appropriate tick intervals for the larger range
     },
     grid: {
       drawOnChartArea: false, // Don't draw grid lines to avoid interference
@@ -139,4 +139,20 @@ export const LABEL_ALIGNMENT_STYLES = {
   font: "12px sans-serif",
   yOffset: 20,
   alignments: ["left", "center", "right"] as const,
+}
+
+export function getDynamicChartScales(improvementPercentage: number) {
+  const dynamicMax = Math.ceil((improvementPercentage * 1.1) / 10) * 10 // 10% buffer, rounded to nearest 10
+  const dynamicStepSize = Math.max(10, Math.ceil(dynamicMax / 10)) // Ensure reasonable step size
+
+  return {
+    ...CHART_SCALES,
+    y1: {
+      ...CHART_SCALES.y1,
+      max: dynamicMax,
+      ticks: {
+        stepSize: dynamicStepSize,
+      },
+    },
+  }
 }

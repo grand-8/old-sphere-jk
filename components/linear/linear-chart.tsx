@@ -7,7 +7,7 @@ import type { LifeTrajectory } from "@/lib/data-service"
 import { applyPeakFinesse, calculateDistanceToLineSegment } from "@/utils/linear/chart-calculations"
 import { Plus, Minus, RotateCcw } from "lucide-react"
 import { useChartInteractions } from "@/hooks/linear/use-chart-interactions"
-import { PEAK_COLORS, CHART_LAYOUT, CHART_SCALES, LABEL_ALIGNMENT_STYLES } from "@/config/chart-styles"
+import { PEAK_COLORS, CHART_LAYOUT, getDynamicChartScales, LABEL_ALIGNMENT_STYLES } from "@/config/chart-styles"
 import {
   processTrajectories,
   calculateAverageData,
@@ -254,6 +254,11 @@ export function LinearChart({ trajectories }: LinearChartProps) {
   const [hoveredLineId, setHoveredLineId] = useState<string | null>(null)
   const [showStatistics, setShowStatistics] = useState(false)
 
+  const improvementPercentage = React.useMemo(() => {
+    if (!trajectories || trajectories.length === 0) return 100
+    return calculateJobtrekToFinalProgression(trajectories)
+  }, [trajectories])
+
   const chartData = React.useMemo(() => {
     if (!trajectories || trajectories.length === 0) {
       return { labels: [], datasets: [] }
@@ -365,8 +370,14 @@ export function LinearChart({ trajectories }: LinearChartProps) {
     [handleClick, handleOpenStatistics],
   )
 
-  const options: any = React.useMemo(
-    () => ({
+  const options: any = React.useMemo(() => {
+    const dynamicScales = getDynamicChartScales(improvementPercentage)
+
+    console.log("[v0] DYNAMIC_SCALES_DEBUG - Improvement percentage:", improvementPercentage + "%")
+    console.log("[v0] DYNAMIC_SCALES_DEBUG - Dynamic Y1 max:", dynamicScales.y1.max + "%")
+    console.log("[v0] DYNAMIC_SCALES_DEBUG - Dynamic Y1 step size:", dynamicScales.y1.ticks.stepSize)
+
+    return {
       responsive: true,
       maintainAspectRatio: false,
       layout: CHART_LAYOUT,
@@ -392,22 +403,22 @@ export function LinearChart({ trajectories }: LinearChartProps) {
           title: {
             display: true,
             text: isThreePointView ? "Périodes" : "Années",
-            color: CHART_SCALES.x.title.color,
-            font: CHART_SCALES.x.title.font,
-            padding: CHART_SCALES.x.title.padding,
+            color: dynamicScales.x.title.color,
+            font: dynamicScales.x.title.font,
+            padding: dynamicScales.x.title.padding,
           },
           ticks: {
-            color: CHART_SCALES.x.ticks.color,
-            maxRotation: CHART_SCALES.x.ticks.maxRotation,
+            color: dynamicScales.x.ticks.color,
+            maxRotation: dynamicScales.x.ticks.maxRotation,
             display: !isThreePointView,
             callback: function (value, index, ticks) {
               return this.getLabelForValue(value as number)
             },
           },
           grid: {
-            color: CHART_SCALES.x.grid.color,
+            color: dynamicScales.x.grid.color,
           },
-          offset: CHART_SCALES.x.offset,
+          offset: dynamicScales.x.offset,
         },
         y: {
           type: "linear",
@@ -416,14 +427,14 @@ export function LinearChart({ trajectories }: LinearChartProps) {
           title: {
             display: true,
             text: "Progression des parcours",
-            color: CHART_SCALES.y.title.color,
-            font: CHART_SCALES.y.title.font,
+            color: dynamicScales.y.title.color,
+            font: dynamicScales.y.title.font,
           },
           ticks: {
             display: false,
           },
           grid: {
-            color: CHART_SCALES.y.grid.color,
+            color: dynamicScales.y.grid.color,
           },
           afterDataLimits: (scale) => {
             const chart = scale.chart as any
@@ -451,34 +462,34 @@ export function LinearChart({ trajectories }: LinearChartProps) {
             display: true,
             text: "Progression (%)",
             color: applyPeakFinesse(PEAK_COLORS.accent, 0),
-            font: CHART_SCALES.y1.title.font,
+            font: dynamicScales.y1.title.font,
           },
-          min: CHART_SCALES.y1.min,
-          max: CHART_SCALES.y1.max,
+          min: dynamicScales.y1.min,
+          max: dynamicScales.y1.max, // Use dynamic max instead of hardcoded value
           ticks: {
             color: applyPeakFinesse(PEAK_COLORS.accent, 0.7),
-            stepSize: CHART_SCALES.y1.ticks.stepSize,
+            stepSize: dynamicScales.y1.ticks.stepSize, // Use dynamic step size
             callback: (value) => value + "%",
           },
-          grid: CHART_SCALES.y1.grid,
+          grid: dynamicScales.y1.grid,
         },
       },
       onHover: enhancedHandleHover,
       onClick: enhancedHandleClick,
       isThreePointView: isThreePointView,
-    }),
-    [
-      chartData,
-      hoveredTrajectory,
-      isHoveringLine,
-      isThreePointView,
-      trajectories,
-      zoomLevel,
-      isPanMode,
-      enhancedHandleHover,
-      enhancedHandleClick,
-    ],
-  )
+    }
+  }, [
+    chartData,
+    hoveredTrajectory,
+    isHoveringLine,
+    isThreePointView,
+    trajectories,
+    zoomLevel,
+    isPanMode,
+    enhancedHandleHover,
+    enhancedHandleClick,
+    improvementPercentage, // Add improvementPercentage as dependency
+  ])
 
   const statistics = showStatistics ? calculateJobtrekStatistics(trajectories) : null
 

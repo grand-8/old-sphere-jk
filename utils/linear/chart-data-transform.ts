@@ -112,23 +112,44 @@ export function calculateAverageData(
   })
 }
 
+function calculateDynamicYAxisMax(improvementPercentage: number): number {
+  const maxWithBuffer = improvementPercentage * 1.1 // Add 10% buffer
+  return Math.ceil(maxWithBuffer / 10) * 10 // Round up to nearest 10
+}
+
+function calculateJobtrekPosition(
+  beforeJobtrekScore: number,
+  jobtrekExactScore: number,
+  finalScore: number,
+  finalImprovementPercentage: number,
+): number {
+  // Calculate progression brute from before Jobtrek to Jobtrek exact
+  const jobtrekProgression = ((jobtrekExactScore - beforeJobtrekScore) / beforeJobtrekScore) * 100
+
+  // Calculate total progression from before Jobtrek to final
+  const totalProgression = ((finalScore - beforeJobtrekScore) / beforeJobtrekScore) * 100
+
+  // Normalization factor: finalImprovementPercentage / totalProgression
+  const normalizationFactor = finalImprovementPercentage / totalProgression
+
+  // Apply normalization to Jobtrek progression
+  const normalizedJobtrekPosition = jobtrekProgression * normalizationFactor
+
+  console.log("[v0] NORMALIZATION_DEBUG - Jobtrek progression (brute):", jobtrekProgression.toFixed(2) + "%")
+  console.log("[v0] NORMALIZATION_DEBUG - Total progression (brute):", totalProgression.toFixed(2) + "%")
+  console.log("[v0] NORMALIZATION_DEBUG - Normalization factor:", normalizationFactor.toFixed(3))
+  console.log("[v0] NORMALIZATION_DEBUG - Normalized Jobtrek position:", normalizedJobtrekPosition.toFixed(2) + "%")
+
+  return Math.max(0, normalizedJobtrekPosition)
+}
+
 export function calculateProgressionData(
   sortedYears: (number | string)[],
   averageData: (number | null)[],
   trajectories?: LifeTrajectory[],
 ): (number | null)[] {
   if (!trajectories || trajectories.length === 0) {
-    return sortedYears.map((yearOrLabel, index) => {
-      if (index === 0) return 0
-      const currentScore = averageData[index]
-      const previousScore = averageData[index - 1]
-      if (currentScore === null || previousScore === null) return null
-      const jobtrekIndex = Math.floor(sortedYears.length / 2)
-      const jobtrekScore = averageData[jobtrekIndex]
-      if (jobtrekScore === null || jobtrekScore === 0) return 0
-      const progression = ((currentScore - jobtrekScore) / Math.abs(jobtrekScore)) * 100
-      return Math.max(0, Math.min(100, progression))
-    })
+    return sortedYears.map(() => null)
   }
 
   if (sortedYears.length === 3) {
@@ -137,64 +158,36 @@ export function calculateProgressionData(
     const finalPoint = averageData[2]
 
     if (beforeJobtrek !== null && preJobtrekPoint !== null && finalPoint !== null) {
-      const segment1Progression = ((preJobtrekPoint - beforeJobtrek) / Math.abs(beforeJobtrek)) * 100
-      const segment2Progression = ((finalPoint - preJobtrekPoint) / Math.abs(preJobtrekPoint)) * 100
-      const totalProgression = ((finalPoint - beforeJobtrek) / Math.abs(beforeJobtrek)) * 100
+      const finalImprovementPercentage = calculateJobtrekToFinalProgression(trajectories)
+      const jobtrekExactAverage = calculateJobtrekStepAverage(trajectories)
 
-      console.log("[v0] THREE_POINT_ANALYSIS - Point 1 (Avant Jobtrek):", beforeJobtrek.toFixed(2))
-      console.log("[v0] THREE_POINT_ANALYSIS - Point 2 (Pré-Jobtrek):", preJobtrekPoint.toFixed(2))
-      console.log("[v0] THREE_POINT_ANALYSIS - Point 3 (Final):", finalPoint.toFixed(2))
-      console.log(
-        "[v0] THREE_POINT_ANALYSIS - Segment 1 progression (Avant → Pré-Jobtrek):",
-        segment1Progression.toFixed(2) + "%",
-      )
-      console.log(
-        "[v0] THREE_POINT_ANALYSIS - Segment 2 progression (Pré-Jobtrek → Final):",
-        segment2Progression.toFixed(2) + "%",
-      )
-      console.log("[v0] THREE_POINT_ANALYSIS - Total progression (Avant → Final):", totalProgression.toFixed(2) + "%")
+      if (jobtrekExactAverage !== null) {
+        const dynamicYAxisMax = calculateDynamicYAxisMax(finalImprovementPercentage)
 
-      console.log("[v0] PROGRESSION_LINE_DEBUG - Calculating progression line values")
+        const jobtrekPosition = calculateJobtrekPosition(
+          beforeJobtrek,
+          jobtrekExactAverage,
+          finalPoint,
+          finalImprovementPercentage,
+        )
+
+        console.log("[v0] DYNAMIC_CALCULATION_DEBUG - Before Jobtrek:", beforeJobtrek.toFixed(2))
+        console.log("[v0] DYNAMIC_CALCULATION_DEBUG - Jobtrek Exact Average:", jobtrekExactAverage.toFixed(2))
+        console.log("[v0] DYNAMIC_CALCULATION_DEBUG - Final Point:", finalPoint.toFixed(2))
+        console.log("[v0] DYNAMIC_CALCULATION_DEBUG - Final Improvement %:", finalImprovementPercentage + "%")
+        console.log("[v0] DYNAMIC_CALCULATION_DEBUG - Dynamic Y Axis Max:", dynamicYAxisMax + "%")
+        console.log("[v0] DYNAMIC_CALCULATION_DEBUG - Jobtrek Position:", jobtrekPosition.toFixed(2) + "%")
+
+        return [
+          null, // Index 0 (Avant Jobtrek): no line
+          jobtrekPosition, // Index 1 (Jobtrek): calculated with proper normalization
+          finalImprovementPercentage, // Index 2 (Final): exact value from statistics
+        ]
+      }
     }
   }
 
   return sortedYears.map((yearOrLabel, index) => {
-    if (sortedYears.length === 3) {
-      // In three-point view, progression line starts at index 1 (Pré-Jobtrek)
-      if (index === 0) {
-        console.log("[v0] PROGRESSION_LINE_DEBUG - Index 0 (Avant Jobtrek): null (no line)")
-        return null // No line before Pré-Jobtrek
-      }
-      if (index === 1) {
-        if (trajectories && trajectories.length > 0) {
-          const jobtrekAverage = calculateJobtrekStepAverage(trajectories)
-          console.log(
-            "[v0] PROGRESSION_LINE_DEBUG - Index 1 (Pré-Jobtrek): 0% (Jobtrek step average as reference point:",
-            jobtrekAverage?.toFixed(2) || "null",
-            ")",
-          )
-          return 0 // Jobtrek step is the reference point (0%)
-        }
-
-        console.log("[v0] PROGRESSION_LINE_DEBUG - Index 1 (Pré-Jobtrek): 0% (fallback)")
-        return 0
-      }
-
-      // Use the average of all individual improvements (same as calculateImprovementPercentage)
-      if (trajectories && trajectories.length > 0) {
-        const averageImprovement = calculateJobtrekToFinalProgression(trajectories)
-        console.log(
-          "[v0] PROGRESSION_LINE_DEBUG - Index 2 (Final):",
-          averageImprovement.toFixed(2) + "% (same as statistics.improvementPercentage)",
-        )
-        return Math.max(0, averageImprovement)
-      }
-
-      console.log("[v0] PROGRESSION_LINE_DEBUG - Index 2 (Final): null (no trajectories)")
-      return null
-    }
-
-    // Original logic for non-three-point view
     if (index === 0) return 0
     const currentScore = averageData[index]
     const previousScore = averageData[index - 1]
@@ -205,36 +198,6 @@ export function calculateProgressionData(
     const progression = ((currentScore - jobtrekScore) / Math.abs(jobtrekScore)) * 100
     return Math.max(0, Math.min(100, progression))
   })
-}
-
-function calculateJobtrekStepAverage(trajectories: LifeTrajectory[]): number | null {
-  if (!trajectories || trajectories.length === 0) return null
-
-  const jobtrekScores: number[] = []
-
-  trajectories.forEach((trajectory) => {
-    // Find the exact Jobtrek point in each trajectory
-    const jobtrekPoint = trajectory.points.find(
-      (p) => p.event.toLowerCase().includes("jobtrek") || p.categorie.toLowerCase().includes("jobtrek"),
-    )
-
-    if (jobtrekPoint) {
-      jobtrekScores.push(jobtrekPoint.cumulativeScore)
-    }
-  })
-
-  if (jobtrekScores.length === 0) return null
-
-  const average = jobtrekScores.reduce((sum, score) => sum + score, 0) / jobtrekScores.length
-
-  console.log(
-    "[v0] JOBTREK_AVERAGE_DEBUG - Found",
-    jobtrekScores.length,
-    "Jobtrek points, average:",
-    average.toFixed(2),
-  )
-
-  return average
 }
 
 export function createPeakInspiredGradient(
@@ -682,4 +645,34 @@ function findFirstJobtrekYear(trajectory: LifeTrajectory): number | null {
     }
   }
   return null
+}
+
+function calculateJobtrekStepAverage(trajectories: LifeTrajectory[]): number | null {
+  if (!trajectories || trajectories.length === 0) return null
+
+  const jobtrekScores: number[] = []
+
+  trajectories.forEach((trajectory) => {
+    // Find the exact Jobtrek point in each trajectory
+    const jobtrekPoint = trajectory.points.find(
+      (p) => p.event.toLowerCase().includes("jobtrek") || p.categorie.toLowerCase().includes("jobtrek"),
+    )
+
+    if (jobtrekPoint) {
+      jobtrekScores.push(jobtrekPoint.cumulativeScore)
+    }
+  })
+
+  if (jobtrekScores.length === 0) return null
+
+  const average = jobtrekScores.reduce((sum, score) => sum + score, 0) / jobtrekScores.length
+
+  console.log(
+    "[v0] JOBTREK_AVERAGE_DEBUG - Found",
+    jobtrekScores.length,
+    "Jobtrek points, average:",
+    average.toFixed(2),
+  )
+
+  return average
 }
