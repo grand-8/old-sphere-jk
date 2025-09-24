@@ -263,7 +263,14 @@ export function createAverageDataset(
       return jobtrekPointIndex >= 0 && jobtrekPointIndex < sortedPoints.length - 1
     })
 
+    console.log("[v0] PROGRESSION_ANALYSIS - Total trajectories:", trajectories.length)
+    console.log(
+      "[v0] PROGRESSION_ANALYSIS - Trajectories with post-Jobtrek progression:",
+      trajectoriesWithPostJobtrekProgression.length,
+    )
+
     if (trajectoriesWithPostJobtrekProgression.length === 0) {
+      console.log("[v0] PROGRESSION_ANALYSIS - No trajectories with post-Jobtrek progression found")
       // If no trajectories have post-Jobtrek progression, return empty data
       return {
         ...createBaseAverageDataset(averageData, hoveredTrajectory),
@@ -280,6 +287,32 @@ export function createAverageDataset(
       // Find the average pre-Jobtrek point index across filtered trajectories
       const preJobtrekIndex = findAveragePreJobtrekIndex(trajectoriesWithPostJobtrekProgression, validIndices)
 
+      const firstValue = averageData[firstIndex]
+      const preJobtrekValue = averageData[preJobtrekIndex]
+      const lastValue = averageData[lastIndex]
+
+      if (firstValue !== null && preJobtrekValue !== null && lastValue !== null) {
+        const segment1Progression = ((preJobtrekValue - firstValue) / Math.abs(firstValue)) * 100
+        const segment2Progression = ((lastValue - preJobtrekValue) / Math.abs(preJobtrekValue)) * 100
+        const totalProgression = ((lastValue - firstValue) / Math.abs(firstValue)) * 100
+
+        console.log("[v0] PROGRESSION_ANALYSIS - Point 1 (First):", firstValue.toFixed(2))
+        console.log("[v0] PROGRESSION_ANALYSIS - Point 2 (Pre-Jobtrek):", preJobtrekValue.toFixed(2))
+        console.log("[v0] PROGRESSION_ANALYSIS - Point 3 (Final):", lastValue.toFixed(2))
+        console.log(
+          "[v0] PROGRESSION_ANALYSIS - Segment 1 progression (Point 1 → Point 2):",
+          segment1Progression.toFixed(2) + "%",
+        )
+        console.log(
+          "[v0] PROGRESSION_ANALYSIS - Segment 2 progression (Point 2 → Point 3):",
+          segment2Progression.toFixed(2) + "%",
+        )
+        console.log(
+          "[v0] PROGRESSION_ANALYSIS - Total progression (Point 1 → Point 3):",
+          totalProgression.toFixed(2) + "%",
+        )
+      }
+
       // Segment 1: First point to pre-Jobtrek point
       // Segment 2: Pre-Jobtrek point to final point
       displayData = averageData.map((value, index) => {
@@ -292,6 +325,19 @@ export function createAverageDataset(
       // Fallback to 2 points if less than 3 valid points
       const firstIndex = validIndices[0].index
       const lastIndex = validIndices[validIndices.length - 1].index
+
+      const firstValue = averageData[firstIndex]
+      const lastValue = averageData[lastIndex]
+
+      if (firstValue !== null && lastValue !== null) {
+        const totalProgression = ((lastValue - firstValue) / Math.abs(firstValue)) * 100
+        console.log("[v0] PROGRESSION_ANALYSIS - 2-point fallback - Point 1:", firstValue.toFixed(2))
+        console.log("[v0] PROGRESSION_ANALYSIS - 2-point fallback - Point 2:", lastValue.toFixed(2))
+        console.log(
+          "[v0] PROGRESSION_ANALYSIS - 2-point fallback - Total progression:",
+          totalProgression.toFixed(2) + "%",
+        )
+      }
 
       displayData = averageData.map((value, index) => {
         if (index === firstIndex || index === lastIndex) {
