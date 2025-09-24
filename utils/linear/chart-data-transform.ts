@@ -59,9 +59,16 @@ export function calculateAverageData(
   trajectories: LifeTrajectory[],
   isThreePointView: boolean,
 ): (number | null)[] {
+  const filteredTrajectories = isThreePointView ? processedTrajectories : trajectories
+  const trajectoriesWithProgression = filteredTrajectories.filter((trajectory) => {
+    const individualImprovement = calculateIndividualImprovement(trajectory)
+    const firstJobtrekYear = findFirstJobtrekYear(trajectory)
+    return firstJobtrekYear && individualImprovement !== 0
+  })
+
   return sortedYears.map((yearOrLabel, index) => {
     if (isThreePointView) {
-      const validScores = processedTrajectories
+      const validScores = trajectoriesWithProgression
         .map((trajectory) => {
           const point = trajectory.points.find((p) => p.year === index)
           return point ? point.cumulativeScore : null
@@ -70,7 +77,7 @@ export function calculateAverageData(
 
       return validScores.length > 0 ? validScores.reduce((sum, score) => sum + score, 0) / validScores.length : null
     } else {
-      const validScores = trajectories
+      const validScores = trajectoriesWithProgression
         .map((trajectory) => {
           const point = trajectory.points.find((p) => p.year === yearOrLabel)
           return point ? point.cumulativeScore : null
@@ -427,4 +434,17 @@ export function calculateJobtrekToFinalProgression(trajectories: LifeTrajectory[
   })
 
   return validTrajectories > 0 ? Math.round(totalImprovements / validTrajectories) : 0
+}
+
+function findFirstJobtrekYear(trajectory: LifeTrajectory): number | null {
+  for (const point of trajectory.points) {
+    if (
+      point.event.includes("Mesure MISt Jobtrek") ||
+      point.event.includes("JobtrekSchool") ||
+      point.event.includes("Jobtrek")
+    ) {
+      return point.year
+    }
+  }
+  return null
 }
