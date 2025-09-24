@@ -24,9 +24,8 @@ interface AverageTooltipState {
 
 export function useChartInteractions(trajectories: LifeTrajectory[], chartData: any) {
   const chartRef = useRef<ChartJS<"line"> | null>(null)
-  const [hoveredTrajectory, setHoveredTrajectory] = useState<string | null>(null)
+  const [hoveredTrajectoryId, setHoveredTrajectoryId] = useState<string | null>(null)
   const [isHoveringLine, setIsHoveringLine] = useState(false)
-  const [currentHoveredTrajectoryId, setCurrentHoveredTrajectoryId] = useState<string | null>(null)
   const [tooltipState, setTooltipState] = useState<TooltipState>({
     visible: false,
     position: { x: 0, y: 0 },
@@ -262,10 +261,9 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
           },
         }
 
-        setCurrentHoveredTrajectoryId("progression")
+        setHoveredTrajectoryId("progression")
         setTooltipState({ visible: false, position: { x: 0, y: 0 }, trajectory: null })
         setAverageTooltipState(tooltipData)
-        setHoveredTrajectory("progression")
         setIsHoveringLine(true)
         if (event.native?.target) {
           ;(event.native.target as HTMLElement).style.cursor = "pointer"
@@ -288,10 +286,9 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
           isProgression: false,
         }
 
-        setCurrentHoveredTrajectoryId("average")
+        setHoveredTrajectoryId("average")
         setTooltipState({ visible: false, position: { x: 0, y: 0 }, trajectory: null })
         setAverageTooltipState(tooltipData)
-        setHoveredTrajectory("average")
         setIsHoveringLine(true)
         if (event.native?.target) {
           ;(event.native.target as HTMLElement).style.cursor = "pointer"
@@ -322,14 +319,14 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
             startYear,
           }
 
-          setCurrentHoveredTrajectoryId(closestTrajectoryId)
+          setHoveredTrajectoryId(closestTrajectoryId)
           setTooltipState({
             visible: true,
             position: { x: clientX, y: clientY },
             trajectory: enhancedTrajectoryData,
           })
         } else {
-          setCurrentHoveredTrajectoryId(closestTrajectoryId)
+          setHoveredTrajectoryId(closestTrajectoryId)
           setTooltipState({
             visible: true,
             position: { x: clientX, y: clientY },
@@ -338,7 +335,6 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
         }
 
         setAverageTooltipState({ visible: false, position: { x: 0, y: 0 }, averageData: [], isProgression: false })
-        setHoveredTrajectory(closestTrajectoryId)
         setIsHoveringLine(true)
         if (event.native?.target) {
           ;(event.native.target as HTMLElement).style.cursor = "pointer"
@@ -348,10 +344,9 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
         chart.setActiveElements([])
         chart.update("none")
 
-        setCurrentHoveredTrajectoryId(null)
+        setHoveredTrajectoryId(null)
         setTooltipState({ visible: false, position: { x: 0, y: 0 }, trajectory: null })
         setAverageTooltipState({ visible: false, position: { x: 0, y: 0 }, averageData: [], isProgression: false })
-        setHoveredTrajectory(null)
         setIsHoveringLine(false)
         if (event.native?.target) {
           ;(event.native.target as HTMLElement).style.cursor = "default"
@@ -363,8 +358,8 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
 
   const handleClick = useCallback(
     (event: any, activeElements: any) => {
-      if (currentHoveredTrajectoryId) {
-        const originalTrajectory = trajectories.find((t) => t.id === currentHoveredTrajectoryId)
+      if (hoveredTrajectoryId) {
+        const originalTrajectory = trajectories.find((t) => t.id === hoveredTrajectoryId)
 
         if (originalTrajectory) {
           setSelectedPerson(originalTrajectory)
@@ -385,7 +380,7 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
         }
       }
     },
-    [currentHoveredTrajectoryId, trajectories, chartData, setSelectedPerson],
+    [hoveredTrajectoryId, trajectories, chartData, setSelectedPerson],
   )
 
   const handleZoomIn = () => {
@@ -401,7 +396,6 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
       if (typeof chartRef.current.resetZoom === "function") {
         chartRef.current.resetZoom()
       } else {
-        // Fallback: manually reset zoom by updating chart options
         const chart = chartRef.current
         if (chart.options.scales?.y) {
           delete chart.options.scales.y.min
@@ -415,7 +409,7 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
 
   return {
     chartRef,
-    hoveredTrajectory,
+    hoveredTrajectory: hoveredTrajectoryId,
     isHoveringLine,
     tooltipState,
     averageTooltipState,
