@@ -168,17 +168,12 @@ export function calculateProgressionData(
       if (index === 1) {
         if (trajectories && trajectories.length > 0) {
           const jobtrekAverage = calculateJobtrekStepAverage(trajectories)
-          const preJobtrekScore = averageData[1] // Pré-Jobtrek score
-
-          if (jobtrekAverage !== null && preJobtrekScore !== null) {
-            // Calculate progression from Jobtrek average to Pré-Jobtrek
-            const progression = ((preJobtrekScore - jobtrekAverage) / Math.abs(jobtrekAverage)) * 100
-            console.log(
-              "[v0] PROGRESSION_LINE_DEBUG - Index 1 (Pré-Jobtrek):",
-              progression.toFixed(2) + "% (calculated from Jobtrek average " + jobtrekAverage.toFixed(2) + ")",
-            )
-            return Math.max(0, progression)
-          }
+          console.log(
+            "[v0] PROGRESSION_LINE_DEBUG - Index 1 (Pré-Jobtrek): 0% (Jobtrek step average as reference point:",
+            jobtrekAverage?.toFixed(2) || "null",
+            ")",
+          )
+          return 0 // Jobtrek step is the reference point (0%)
         }
 
         console.log("[v0] PROGRESSION_LINE_DEBUG - Index 1 (Pré-Jobtrek): 0% (fallback)")
