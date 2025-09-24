@@ -55,7 +55,7 @@ export function findClosestTrajectoryToMouse(
   maxDistance = 15,
 ): string | null {
   let closestTrajectoryId: string | null = null
-  let minDistance = maxDistance
+  let bestScore = Number.POSITIVE_INFINITY
 
   const isThreePointView = (chart.config?.options as any)?.isThreePointView || false
   console.log(`[v0] FIND_CLOSEST_UTILS - View: ${isThreePointView ? "SIMPLIFIED" : "COMPLETE"}`)
@@ -77,30 +77,62 @@ export function findClosestTrajectoryToMouse(
       `[v0] FIND_CLOSEST_UTILS - Checking dataset ${datasetIndex} (${dataset.trajectoryId}) with ${meta.data.length} points`,
     )
 
+    let minSegmentDistance = Number.POSITIVE_INFINITY
+    let averageDistance = 0
+    let validSegments = 0
+    let mouseXProximity = Number.POSITIVE_INFINITY
+
     for (let i = 0; i < meta.data.length - 1; i++) {
       const point1 = meta.data[i]
       const point2 = meta.data[i + 1]
 
       if (!point1 || !point2) continue
 
-      const distance = calculateDistanceToLineSegment(mouseX, mouseY, point1.x, point1.y, point2.x, point2.y)
+      const segmentDistance = calculateDistanceToLineSegment(mouseX, mouseY, point1.x, point1.y, point2.x, point2.y)
 
-      if (distance < maxDistance * 2) {
+      if (segmentDistance < minSegmentDistance) {
+        minSegmentDistance = segmentDistance
+      }
+
+      if (segmentDistance < maxDistance * 3) {
+        averageDistance += segmentDistance
+        validSegments++
+      }
+
+      const segmentCenterX = (point1.x + point2.x) / 2
+      const xDistance = Math.abs(mouseX - segmentCenterX)
+      if (xDistance < mouseXProximity) {
+        mouseXProximity = xDistance
+      }
+
+      if (segmentDistance < maxDistance * 2) {
         console.log(
-          `[v0] FIND_CLOSEST_UTILS - Segment ${i}-${i + 1}: distance=${distance.toFixed(2)}, points=(${point1.x.toFixed(1)},${point1.y.toFixed(1)}) to (${point2.x.toFixed(1)},${point2.y.toFixed(1)})`,
+          `[v0] FIND_CLOSEST_UTILS - Segment ${i}-${i + 1}: distance=${segmentDistance.toFixed(2)}, points=(${point1.x.toFixed(1)},${point1.y.toFixed(1)}) to (${point2.x.toFixed(1)},${point2.y.toFixed(1)})`,
         )
       }
+    }
 
-      if (distance < minDistance) {
-        minDistance = distance
-        closestTrajectoryId = dataset.trajectoryId
-        console.log(`[v0] FIND_CLOSEST_UTILS - NEW CLOSEST: ${closestTrajectoryId} at distance ${distance.toFixed(2)}`)
-      }
+    if (minSegmentDistance > maxDistance) {
+      return
+    }
+
+    averageDistance = validSegments > 0 ? averageDistance / validSegments : minSegmentDistance
+
+    const trajectoryScore = minSegmentDistance * 0.7 + averageDistance * 0.2 + mouseXProximity * 0.1
+
+    console.log(
+      `[v0] FIND_CLOSEST_UTILS - ${dataset.trajectoryId}: minDist=${minSegmentDistance.toFixed(2)}, avgDist=${averageDistance.toFixed(2)}, xProx=${mouseXProximity.toFixed(2)}, score=${trajectoryScore.toFixed(2)}`,
+    )
+
+    if (trajectoryScore < bestScore) {
+      bestScore = trajectoryScore
+      closestTrajectoryId = dataset.trajectoryId
+      console.log(`[v0] FIND_CLOSEST_UTILS - NEW BEST: ${closestTrajectoryId} with score ${trajectoryScore.toFixed(2)}`)
     }
   })
 
   console.log(
-    `[v0] FIND_CLOSEST_UTILS - Final result: ${closestTrajectoryId || "NONE"} at distance ${minDistance.toFixed(2)}`,
+    `[v0] FIND_CLOSEST_UTILS - Final result: ${closestTrajectoryId || "NONE"} with score ${bestScore.toFixed(2)}`,
   )
   return closestTrajectoryId
 }
@@ -112,11 +144,9 @@ export function createActiveElementsFromTrajectoryId(
 ): any[] {
   if (!trajectoryId) return []
 
-  // Find the dataset index for this trajectory
   const datasetIndex = chart.data.datasets.findIndex((dataset: any) => dataset.trajectoryId === trajectoryId)
   if (datasetIndex === -1) return []
 
-  // Find the closest data point index based on mouse X position
   const meta = chart.getDatasetMeta(datasetIndex)
   if (!meta.data || meta.data.length === 0) return []
 
@@ -131,7 +161,6 @@ export function createActiveElementsFromTrajectoryId(
     }
   })
 
-  // Create a fake active element that Chart.js tooltip system expects
   return [
     {
       datasetIndex,
