@@ -59,10 +59,6 @@ export function findClosestTrajectoryToMouse(
 
   const isThreePointView = (chart.config?.options as any)?.isThreePointView || false
 
-  console.log(`[v0] FIND_CLOSEST_UTILS - View: ${isThreePointView ? "SIMPLIFIED" : "COMPLETE"}`)
-  console.log(`[v0] FIND_CLOSEST_UTILS - Starting search with maxDistance: ${maxDistance}`)
-  console.log(`[v0] FIND_CLOSEST_UTILS - Mouse at: (${mouseX.toFixed(1)}, ${mouseY.toFixed(1)})`)
-
   chart.data.datasets.forEach((dataset: any, datasetIndex) => {
     const meta = chart.getDatasetMeta(datasetIndex)
     if (!meta.visible) return
@@ -70,11 +66,6 @@ export function findClosestTrajectoryToMouse(
     const hasTrajectoryId = dataset.trajectoryId && dataset.trajectoryId !== "undefined"
     if (!hasTrajectoryId) return
 
-    console.log(
-      `[v0] FIND_CLOSEST_UTILS - Checking dataset ${datasetIndex} (${dataset.trajectoryId}) with ${meta.data.length} points`,
-    )
-
-    // Check all segments in this trajectory
     for (let i = 0; i < meta.data.length - 1; i++) {
       const point1 = meta.data[i]
       const point2 = meta.data[i + 1]
@@ -83,28 +74,17 @@ export function findClosestTrajectoryToMouse(
 
       const segmentDistance = calculateDistanceToLineSegment(mouseX, mouseY, point1.x, point1.y, point2.x, point2.y)
 
-      console.log(
-        `[v0] FIND_CLOSEST_UTILS - Segment ${i}-${i + 1}: distance=${segmentDistance.toFixed(2)}, points=(${point1.x.toFixed(1)},${point1.y.toFixed(1)}) to (${point2.x.toFixed(1)},${point2.y.toFixed(1)})`,
-      )
-
       if (segmentDistance < minDistance) {
         minDistance = segmentDistance
         closestTrajectoryId = dataset.trajectoryId
-        console.log(
-          `[v0] FIND_CLOSEST_UTILS - NEW BEST: ${closestTrajectoryId} with distance ${segmentDistance.toFixed(2)}`,
-        )
       }
     }
   })
 
-  // Only return trajectory if within maxDistance
   if (minDistance <= maxDistance) {
-    console.log(
-      `[v0] FIND_CLOSEST_UTILS - Final result: ${closestTrajectoryId} with distance ${minDistance.toFixed(2)}`,
-    )
+    console.log(`[v0] FIND_CLOSEST - Found: ${closestTrajectoryId} (distance: ${minDistance.toFixed(1)})`)
     return closestTrajectoryId
   } else {
-    console.log(`[v0] FIND_CLOSEST_UTILS - Final result: NONE (closest was ${minDistance.toFixed(2)} > ${maxDistance})`)
     return null
   }
 }
