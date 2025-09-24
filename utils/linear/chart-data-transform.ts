@@ -166,37 +166,56 @@ export function calculateProgressionData(
         return null // No line before Pré-Jobtrek
       }
       if (index === 1) {
-        const currentScore = averageData[1] // Pré-Jobtrek score (1.27)
-        const referenceScore = averageData[0] // Avant Jobtrek score (0.30)
+        // Calculate the average of all trajectories at the exact Jobtrek step
+        const jobtrekAverageScore = calculateJobtrekStepAverage(trajectories || [])
 
-        if (currentScore === null || referenceScore === null || referenceScore === 0) {
-          console.log("[v0] PROGRESSION_LINE_DEBUG - Index 1 (Pré-Jobtrek): null (invalid scores)")
-          return null
+        if (jobtrekAverageScore === null) {
+          console.log("[v0] PROGRESSION_LINE_DEBUG - Index 1 (Pré-Jobtrek): 0% (no Jobtrek data)")
+          return 0
         }
 
-        const progressionPercent = ((currentScore - referenceScore) / Math.abs(referenceScore)) * 100
-        console.log(
-          "[v0] PROGRESSION_LINE_DEBUG - Index 1 (Pré-Jobtrek):",
-          progressionPercent.toFixed(2) + "% (progression from Avant Jobtrek)",
-        )
-        return Math.max(0, progressionPercent)
+        // Use the Jobtrek average as the reference point (0% baseline)
+        // and calculate relative position based on total progression range
+        const finalScore = averageData[2]
+        const beforeJobtrekScore = averageData[0]
+
+        if (finalScore !== null && beforeJobtrekScore !== null) {
+          // Calculate total range from before Jobtrek to final
+          const totalRange = finalScore - beforeJobtrekScore
+
+          // Calculate where Jobtrek average sits in this range
+          const jobtrekPosition = jobtrekAverageScore - beforeJobtrekScore
+
+          // Convert to percentage position (0-100%)
+          const relativePosition = totalRange !== 0 ? (jobtrekPosition / totalRange) * 100 : 0
+
+          console.log(
+            "[v0] PROGRESSION_LINE_DEBUG - Index 1 (Pré-Jobtrek):",
+            relativePosition.toFixed(2) + "% (Jobtrek average relative position)",
+          )
+          return Math.max(0, Math.min(100, relativePosition))
+        }
+
+        console.log("[v0] PROGRESSION_LINE_DEBUG - Index 1 (Pré-Jobtrek): 0% (fallback)")
+        return 0
       }
 
-      // Calculate progression from Avant Jobtrek to Final (not from Pré-Jobtrek to Final)
+      // Calculate progression from Jobtrek reference to Final
       const currentScore = averageData[index] // Final score
-      const referenceScore = averageData[0] // Use Avant Jobtrek as reference for consistency
+      const jobtrekAverageScore = calculateJobtrekStepAverage(trajectories || [])
 
-      if (currentScore === null || referenceScore === null || referenceScore === 0) {
+      if (currentScore === null || jobtrekAverageScore === null) {
         console.log("[v0] PROGRESSION_LINE_DEBUG - Index 2 (Final): null (invalid scores)")
         return null
       }
 
-      const progressionPercent = ((currentScore - referenceScore) / Math.abs(referenceScore)) * 100
+      const progressionFromJobtrek = ((currentScore - jobtrekAverageScore) / Math.abs(jobtrekAverageScore)) * 100
+
       console.log(
         "[v0] PROGRESSION_LINE_DEBUG - Index 2 (Final):",
-        progressionPercent.toFixed(2) + "% (total progression from Avant Jobtrek)",
+        progressionFromJobtrek.toFixed(2) + "% (progression from Jobtrek average)",
       )
-      return Math.max(0, progressionPercent)
+      return Math.max(0, progressionFromJobtrek)
     }
 
     // Original logic for non-three-point view
@@ -210,6 +229,36 @@ export function calculateProgressionData(
     const progression = ((currentScore - jobtrekScore) / Math.abs(jobtrekScore)) * 100
     return Math.max(0, Math.min(100, progression))
   })
+}
+
+function calculateJobtrekStepAverage(trajectories: LifeTrajectory[]): number | null {
+  if (!trajectories || trajectories.length === 0) return null
+
+  const jobtrekScores: number[] = []
+
+  trajectories.forEach((trajectory) => {
+    // Find the exact Jobtrek point in each trajectory
+    const jobtrekPoint = trajectory.points.find(
+      (p) => p.event.toLowerCase().includes("jobtrek") || p.categorie.toLowerCase().includes("jobtrek"),
+    )
+
+    if (jobtrekPoint) {
+      jobtrekScores.push(jobtrekPoint.cumulativeScore)
+    }
+  })
+
+  if (jobtrekScores.length === 0) return null
+
+  const average = jobtrekScores.reduce((sum, score) => sum + score, 0) / jobtrekScores.length
+
+  console.log(
+    "[v0] JOBTREK_AVERAGE_DEBUG - Found",
+    jobtrekScores.length,
+    "Jobtrek points, average:",
+    average.toFixed(2),
+  )
+
+  return average
 }
 
 export function createPeakInspiredGradient(
@@ -587,7 +636,7 @@ export function createProgressionDataset(
   }
 }
 
-function calculateBeforeToJobtrekProgression(trajectories: LifeTrajectory[]): number {
+export function calculateBeforeToJobtrekProgression(trajectories: LifeTrajectory[]): number {
   if (!trajectories || trajectories.length === 0) return 0
 
   let totalImprovements = 0
