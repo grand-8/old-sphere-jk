@@ -8,19 +8,25 @@ import { useLifeTrajectoryStore } from "@/lib/store"
 import { calculateIndividualImprovement } from "@/lib/statistics-calculator"
 import { calculateJobtrekToFinalProgression } from "@/utils/linear/chart-data-transform"
 
-interface TooltipState {
-  visible: boolean
-  position: { x: number; y: number }
-  trajectory: LifeTrajectory | null
-}
-
-interface AverageTooltipState {
-  visible: boolean
-  position: { x: number; y: number }
-  averageData: (number | null)[]
-  isProgression: boolean
-  progressionPercentages?: { beforeToJobtrek: number; jobtrekToFinal: number }
-}
+type TooltipState =
+  | {
+      visible: false
+      position: { x: number; y: number }
+    }
+  | {
+      visible: true
+      position: { x: number; y: number }
+      type: "trajectory"
+      trajectory: LifeTrajectory
+    }
+  | {
+      visible: true
+      position: { x: number; y: number }
+      type: "average"
+      averageData: (number | null)[]
+      isProgression: boolean
+      progressionPercentages?: { beforeToJobtrek: number; jobtrekToFinal: number }
+    }
 
 export function useChartInteractions(trajectories: LifeTrajectory[], chartData: any) {
   const chartRef = useRef<ChartJS<"line"> | null>(null)
@@ -29,13 +35,6 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
   const [tooltipState, setTooltipState] = useState<TooltipState>({
     visible: false,
     position: { x: 0, y: 0 },
-    trajectory: null,
-  })
-  const [averageTooltipState, setAverageTooltipState] = useState<AverageTooltipState>({
-    visible: false,
-    position: { x: 0, y: 0 },
-    averageData: [],
-    isProgression: false,
   })
   const [zoomLevel, setZoomLevel] = useState(1)
   const [isPanMode, setIsPanMode] = useState(false)
@@ -197,14 +196,12 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
       }
     })
 
-    // Same priority logic as modal: MISt takes precedence over School
     if (hasMist) {
       return "Mesure MISt Jobtrek"
     } else if (hasSchool) {
       return "JobtrekSchool"
     }
 
-    // Fallback to original typeMesure if no specific events found
     return trajectory.typeMesure || "JobtrekSchool"
   }, [])
 
@@ -250,20 +247,18 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
 
         const jobtrekToFinalPercentage = calculateJobtrekToFinalProgression(trajectories)
 
-        const tooltipData = {
+        setHoveredTrajectoryId("progression")
+        setTooltipState({
           visible: true,
           position: { x: clientX, y: clientY },
+          type: "average",
           averageData: progressionDataset?.progressionData || [],
           isProgression: true,
           progressionPercentages: {
             beforeToJobtrek: 0,
             jobtrekToFinal: jobtrekToFinalPercentage,
           },
-        }
-
-        setHoveredTrajectoryId("progression")
-        setTooltipState({ visible: false, position: { x: 0, y: 0 }, trajectory: null })
-        setAverageTooltipState(tooltipData)
+        })
         setIsHoveringLine(true)
         if (event.native?.target) {
           ;(event.native.target as HTMLElement).style.cursor = "pointer"
@@ -279,16 +274,14 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
           chart.update("none")
         }
 
-        const tooltipData = {
+        setHoveredTrajectoryId("average")
+        setTooltipState({
           visible: true,
           position: { x: clientX, y: clientY },
+          type: "average",
           averageData: averageDataset?.averageData || [],
           isProgression: false,
-        }
-
-        setHoveredTrajectoryId("average")
-        setTooltipState({ visible: false, position: { x: 0, y: 0 }, trajectory: null })
-        setAverageTooltipState(tooltipData)
+        })
         setIsHoveringLine(true)
         if (event.native?.target) {
           ;(event.native.target as HTMLElement).style.cursor = "pointer"
@@ -323,18 +316,17 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
           setTooltipState({
             visible: true,
             position: { x: clientX, y: clientY },
+            type: "trajectory",
             trajectory: enhancedTrajectoryData,
           })
         } else {
           setHoveredTrajectoryId(closestTrajectoryId)
           setTooltipState({
-            visible: true,
+            visible: false,
             position: { x: clientX, y: clientY },
-            trajectory: trajectoryData || null,
           })
         }
 
-        setAverageTooltipState({ visible: false, position: { x: 0, y: 0 }, averageData: [], isProgression: false })
         setIsHoveringLine(true)
         if (event.native?.target) {
           ;(event.native.target as HTMLElement).style.cursor = "pointer"
@@ -345,8 +337,7 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
         chart.update("none")
 
         setHoveredTrajectoryId(null)
-        setTooltipState({ visible: false, position: { x: 0, y: 0 }, trajectory: null })
-        setAverageTooltipState({ visible: false, position: { x: 0, y: 0 }, averageData: [], isProgression: false })
+        setTooltipState({ visible: false, position: { x: 0, y: 0 } })
         setIsHoveringLine(false)
         if (event.native?.target) {
           ;(event.native.target as HTMLElement).style.cursor = "default"
@@ -412,7 +403,21 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
     hoveredTrajectory: hoveredTrajectoryId,
     isHoveringLine,
     tooltipState,
-    averageTooltipState,
+    averageTooltipState:
+      tooltipState.visible && tooltipState.type === "average"
+        ? {
+            visible: true,
+            position: tooltipState.position,
+            averageData: tooltipState.averageData,
+            isProgression: tooltipState.isProgression,
+            progressionPercentages: tooltipState.progressionPercentages,
+          }
+        : {
+            visible: false,
+            position: { x: 0, y: 0 },
+            averageData: [],
+            isProgression: false,
+          },
     zoomLevel,
     isPanMode,
     handleHover,
