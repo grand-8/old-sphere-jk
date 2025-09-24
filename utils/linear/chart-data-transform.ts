@@ -113,22 +113,28 @@ export function calculateProgressionData(
   }
 
   if (sortedYears.length === 3) {
-    const beforeAverageScore = averageData[0]
+    const beforeJobtrek = averageData[0]
     const preJobtrekPoint = averageData[1]
-    const finalAverageScore = averageData[2]
+    const finalPoint = averageData[2]
 
-    if (beforeAverageScore === null || preJobtrekPoint === null || finalAverageScore === null) {
-      return [null, null, null]
+    if (beforeJobtrek !== null && preJobtrekPoint !== null && finalPoint !== null) {
+      const segment1Progression = ((preJobtrekPoint - beforeJobtrek) / Math.abs(beforeJobtrek)) * 100
+      const segment2Progression = ((finalPoint - preJobtrekPoint) / Math.abs(preJobtrekPoint)) * 100
+      const totalProgression = ((finalPoint - beforeJobtrek) / Math.abs(beforeJobtrek)) * 100
+
+      console.log("[v0] THREE_POINT_ANALYSIS - Point 1 (Avant Jobtrek):", beforeJobtrek.toFixed(2))
+      console.log("[v0] THREE_POINT_ANALYSIS - Point 2 (Pré-Jobtrek):", preJobtrekPoint.toFixed(2))
+      console.log("[v0] THREE_POINT_ANALYSIS - Point 3 (Final):", finalPoint.toFixed(2))
+      console.log(
+        "[v0] THREE_POINT_ANALYSIS - Segment 1 progression (Avant → Pré-Jobtrek):",
+        segment1Progression.toFixed(2) + "%",
+      )
+      console.log(
+        "[v0] THREE_POINT_ANALYSIS - Segment 2 progression (Pré-Jobtrek → Final):",
+        segment2Progression.toFixed(2) + "%",
+      )
+      console.log("[v0] THREE_POINT_ANALYSIS - Total progression (Avant → Final):", totalProgression.toFixed(2) + "%")
     }
-
-    const totalProgression = finalAverageScore - beforeAverageScore
-    const jobtrekProgression = preJobtrekPoint - beforeAverageScore
-
-    const jobtrekProgressionPercentage = totalProgression !== 0 ? (jobtrekProgression / totalProgression) * 100 : 0
-
-    const jobtrekToFinalPercentage = calculateJobtrekToFinalProgression(trajectories)
-
-    return [null, jobtrekProgressionPercentage, 100]
   }
 
   return sortedYears.map((yearOrLabel, index) => {
@@ -203,9 +209,9 @@ export function createTrajectoryDataset(
     borderWidth: isHighlighted
       ? DATASET_STYLES.trajectory.borderWidth.highlighted
       : DATASET_STYLES.trajectory.borderWidth.normal,
-    hoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0),
-    hoverBorderWidth: 4,
-    hoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.1),
+    hoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0), // White color for hover
+    hoverBorderWidth: 4, // Thicker line when hovered
+    hoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.1), // Subtle white background
     pointRadius: isHighlighted
       ? DATASET_STYLES.trajectory.pointRadius.highlighted
       : DATASET_STYLES.trajectory.pointRadius.normal,
@@ -222,8 +228,8 @@ export function createTrajectoryDataset(
       if (!chartArea) return applyPeakFinesse(PEAK_COLORS.blue, 0.4)
       return createPeakInspiredGradient(ctx, chartArea, data, isHighlighted)
     },
-    pointHoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0),
-    pointHoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.3),
+    pointHoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0), // White border on hover
+    pointHoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.3), // White background on hover
     pointBorderWidth: DATASET_STYLES.trajectory.pointBorderWidth,
     tension: DATASET_STYLES.trajectory.tension,
     fill: DATASET_STYLES.trajectory.fill,
@@ -240,7 +246,7 @@ export function createAverageDataset(
   averageData: (number | null)[],
   hoveredTrajectory: string | null,
   isThreePointView?: boolean,
-  trajectories?: LifeTrajectory[],
+  trajectories?: LifeTrajectory[], // Added trajectories parameter to find pre-Jobtrek points
 ) {
   let displayData = averageData
 
@@ -399,9 +405,9 @@ function createBaseAverageDataset(displayData: (number | null)[], hoveredTraject
       hoveredTrajectory === "average"
         ? DATASET_STYLES.average.borderDash.highlighted
         : DATASET_STYLES.average.borderDash.normal,
-    hoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0),
-    hoverBorderWidth: 5,
-    hoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.2),
+    hoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0), // White color for hover
+    hoverBorderWidth: 5, // Extra thick line when hovered
+    hoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.2), // Subtle white background
     pointRadius:
       hoveredTrajectory === "average"
         ? DATASET_STYLES.average.pointRadius.highlighted
@@ -409,8 +415,8 @@ function createBaseAverageDataset(displayData: (number | null)[], hoveredTraject
     pointHoverRadius: DATASET_STYLES.average.pointHoverRadius,
     pointBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0),
     pointBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.2),
-    pointHoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0),
-    pointHoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.4),
+    pointHoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0), // White border on hover
+    pointHoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.4), // White background on hover
     pointBorderWidth: DATASET_STYLES.average.pointBorderWidth,
     tension: DATASET_STYLES.average.tension,
     fill: DATASET_STYLES.average.fill,
@@ -489,9 +495,9 @@ export function createProgressionDataset(
       hoveredTrajectory === "progression"
         ? DATASET_STYLES.progression.borderDash.highlighted
         : DATASET_STYLES.progression.borderDash.normal,
-    hoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0),
-    hoverBorderWidth: 5,
-    hoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.2),
+    hoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0), // White color for hover
+    hoverBorderWidth: 5, // Extra thick line when hovered
+    hoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.2), // Subtle white background
     pointRadius:
       hoveredTrajectory === "progression"
         ? DATASET_STYLES.progression.pointRadius.highlighted
@@ -499,8 +505,8 @@ export function createProgressionDataset(
     pointHoverRadius: DATASET_STYLES.progression.pointHoverRadius,
     pointBorderColor: applyPeakFinesse(PEAK_COLORS.accent, 0),
     pointBackgroundColor: applyPeakFinesse(PEAK_COLORS.accent, 0.2),
-    pointHoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0),
-    pointHoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.4),
+    pointHoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0), // White border on hover
+    pointHoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.4), // White background on hover
     pointBorderWidth: DATASET_STYLES.progression.pointBorderWidth,
     tension: DATASET_STYLES.progression.tension,
     fill: DATASET_STYLES.progression.fill,
