@@ -251,15 +251,37 @@ export function createAverageDataset(
 ) {
   let displayData = averageData
   if (isThreePointView === false && trajectories) {
+    const trajectoriesWithPostJobtrekProgression = trajectories.filter((trajectory) => {
+      const sortedPoints = [...trajectory.points].sort((a, b) => a.year - b.year)
+
+      // Find Jobtrek point
+      const jobtrekPointIndex = sortedPoints.findIndex(
+        (p) => p.event.toLowerCase().includes("jobtrek") || p.categorie.toLowerCase().includes("jobtrek"),
+      )
+
+      // Check if there are points after Jobtrek
+      return jobtrekPointIndex >= 0 && jobtrekPointIndex < sortedPoints.length - 1
+    })
+
+    if (trajectoriesWithPostJobtrekProgression.length === 0) {
+      // If no trajectories have post-Jobtrek progression, return empty data
+      return {
+        ...createBaseAverageDataset(averageData, hoveredTrajectory),
+        data: averageData.map(() => null),
+      }
+    }
+
     const validIndices = averageData.map((value, index) => ({ value, index })).filter((item) => item.value !== null)
 
     if (validIndices.length >= 3) {
       const firstIndex = validIndices[0].index
       const lastIndex = validIndices[validIndices.length - 1].index
 
-      // Find the average pre-Jobtrek point index across all trajectories
-      const preJobtrekIndex = findAveragePreJobtrekIndex(trajectories, validIndices)
+      // Find the average pre-Jobtrek point index across filtered trajectories
+      const preJobtrekIndex = findAveragePreJobtrekIndex(trajectoriesWithPostJobtrekProgression, validIndices)
 
+      // Segment 1: First point to pre-Jobtrek point
+      // Segment 2: Pre-Jobtrek point to final point
       displayData = averageData.map((value, index) => {
         if (index === firstIndex || index === preJobtrekIndex || index === lastIndex) {
           return value
@@ -280,6 +302,10 @@ export function createAverageDataset(
     }
   }
 
+  return createBaseAverageDataset(displayData, hoveredTrajectory)
+}
+
+function createBaseAverageDataset(displayData: (number | null)[], hoveredTrajectory: string | null) {
   return {
     label: "Moyenne de tous les parcours",
     data: displayData,
@@ -324,11 +350,50 @@ export function createAverageDataset(
       hoveredTrajectory && hoveredTrajectory !== "average"
         ? DATASET_STYLES.average.opacity.dimmed
         : DATASET_STYLES.average.opacity.normal,
-    averageData: averageData,
+    averageData: displayData,
     yAxisID: "y",
     isAverage: true,
     isProgression: false,
   }
+}
+
+function findAveragePreJobtrekIndex(
+  trajectories: LifeTrajectory[],
+  validIndices: { value: number | null; index: number }[],
+): number {
+  const preJobtrekIndices: number[] = []
+
+  trajectories.forEach((trajectory) => {
+    const sortedPoints = [...trajectory.points].sort((a, b) => a.year - b.year)
+
+    // Find Jobtrek point
+    const jobtrekPointIndex = sortedPoints.findIndex(
+      (p) => p.event.toLowerCase().includes("jobtrek") || p.categorie.toLowerCase().includes("jobtrek"),
+    )
+
+    if (jobtrekPointIndex > 0) {
+      // Get the point just before Jobtrek
+      const preJobtrekPoint = sortedPoints[jobtrekPointIndex - 1]
+
+      // Find corresponding index in validIndices based on year
+      const correspondingIndex = validIndices.findIndex(
+        (item) => item.index === sortedPoints.findIndex((p) => p.year === preJobtrekPoint.year),
+      )
+
+      if (correspondingIndex !== -1) {
+        preJobtrekIndices.push(validIndices[correspondingIndex].index)
+      }
+    }
+  })
+
+  // Return average pre-Jobtrek index, or fallback to middle point
+  if (preJobtrekIndices.length > 0) {
+    const averageIndex = Math.round(preJobtrekIndices.reduce((sum, idx) => sum + idx, 0) / preJobtrekIndices.length)
+    return averageIndex
+  }
+
+  // Fallback to middle point if no pre-Jobtrek points found
+  return validIndices[Math.floor(validIndices.length / 2)].index
 }
 
 export function createProgressionDataset(
@@ -461,43 +526,4 @@ function findFirstJobtrekYear(trajectory: LifeTrajectory): number | null {
     }
   }
   return null
-}
-
-function findAveragePreJobtrekIndex(
-  trajectories: LifeTrajectory[],
-  validIndices: { value: number | null; index: number }[],
-): number {
-  const preJobtrekIndices: number[] = []
-
-  trajectories.forEach((trajectory) => {
-    const sortedPoints = [...trajectory.points].sort((a, b) => a.year - b.year)
-
-    // Find Jobtrek point
-    const jobtrekPointIndex = sortedPoints.findIndex(
-      (p) => p.event.toLowerCase().includes("jobtrek") || p.categorie.toLowerCase().includes("jobtrek"),
-    )
-
-    if (jobtrekPointIndex > 0) {
-      // Get the point just before Jobtrek
-      const preJobtrekPoint = sortedPoints[jobtrekPointIndex - 1]
-
-      // Find corresponding index in validIndices based on year
-      const correspondingIndex = validIndices.findIndex(
-        (item) => item.index === sortedPoints.findIndex((p) => p.year === preJobtrekPoint.year),
-      )
-
-      if (correspondingIndex !== -1) {
-        preJobtrekIndices.push(validIndices[correspondingIndex].index)
-      }
-    }
-  })
-
-  // Return average pre-Jobtrek index, or fallback to middle point
-  if (preJobtrekIndices.length > 0) {
-    const averageIndex = Math.round(preJobtrekIndices.reduce((sum, idx) => sum + idx, 0) / preJobtrekIndices.length)
-    return averageIndex
-  }
-
-  // Fallback to middle point if no pre-Jobtrek points found
-  return validIndices[Math.floor(validIndices.length / 2)].index
 }

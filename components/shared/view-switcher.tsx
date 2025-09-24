@@ -3,26 +3,12 @@
 import type React from "react"
 
 import { useLifeTrajectoryStore, type ViewType } from "@/lib/store"
+import { Globe, TrendingUp } from "lucide-react"
 
 interface ViewSwitcherProps {
   className?: string
   isIntroAnimationPlaying?: boolean
 }
-
-const GlobeIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="10" />
-    <line x1="2" y1="12" x2="22" y2="12" />
-    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-  </svg>
-)
-
-const TrendingUpIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-    <polyline points="17 6 23 6 23 12" />
-  </svg>
-)
 
 export function ViewSwitcher({ className, isIntroAnimationPlaying = false }: ViewSwitcherProps) {
   const { currentView, setCurrentView } = useLifeTrajectoryStore()
@@ -60,7 +46,7 @@ export function ViewSwitcher({ className, isIntroAnimationPlaying = false }: Vie
         aria-label="Vue sphère"
         data-ui-element="true"
       >
-        <GlobeIcon />
+        <Globe size={16} />
       </button>
       <button
         onClick={() => handleViewChange("linear")}
@@ -74,7 +60,7 @@ export function ViewSwitcher({ className, isIntroAnimationPlaying = false }: Vie
         aria-label="Vue linéaire"
         data-ui-element="true"
       >
-        <TrendingUpIcon />
+        <TrendingUp size={16} />
       </button>
     </div>
   )
