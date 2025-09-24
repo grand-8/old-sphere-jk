@@ -60,9 +60,9 @@ export const CHART_SCALES = {
       },
     },
     min: 0,
-    max: 100,
+    max: 200, // Changed max from 100 to 200 to extend Y axis range to 0-200%
     ticks: {
-      stepSize: 20,
+      stepSize: 40, // Changed stepSize from 20 to 40 to maintain appropriate tick intervals for the larger range
     },
     grid: {
       drawOnChartArea: false, // Don't draw grid lines to avoid interference
