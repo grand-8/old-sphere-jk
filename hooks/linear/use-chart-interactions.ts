@@ -205,6 +205,11 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
     return trajectory.typeMesure || "JobtrekSchool"
   }, [])
 
+  const updateChartHighlight = useCallback((chart: ChartJS<"line">, activeElements: any[] = []) => {
+    chart.setActiveElements(activeElements)
+    chart.update("none")
+  }, [])
+
   const handleHover = useCallback(
     (event: any, activeElements: any, chart: ChartJS<"line">) => {
       if (!chart || !event.native) return
@@ -241,8 +246,7 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
         )
 
         if (progressionDatasetIndex !== -1) {
-          chart.setActiveElements([{ datasetIndex: progressionDatasetIndex, index: 0 }])
-          chart.update("none")
+          updateChartHighlight(chart, [{ datasetIndex: progressionDatasetIndex, index: 0 }])
         }
 
         const jobtrekToFinalPercentage = calculateJobtrekToFinalProgression(trajectories)
@@ -270,8 +274,7 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
         const averageDatasetIndex = chartData.datasets.findIndex((dataset: any) => dataset.trajectoryId === "average")
 
         if (averageDatasetIndex !== -1) {
-          chart.setActiveElements([{ datasetIndex: averageDatasetIndex, index: 0 }])
-          chart.update("none")
+          updateChartHighlight(chart, [{ datasetIndex: averageDatasetIndex, index: 0 }])
         }
 
         setHoveredTrajectoryId("average")
@@ -295,8 +298,7 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
         )
 
         if (trajectoryDatasetIndex !== -1) {
-          chart.setActiveElements([{ datasetIndex: trajectoryDatasetIndex, index: 0 }])
-          chart.update("none")
+          updateChartHighlight(chart, [{ datasetIndex: trajectoryDatasetIndex, index: 0 }])
         }
 
         if (trajectoryData) {
@@ -333,8 +335,7 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
         }
       } else {
         console.log(`[v0] HOVER_HOOK - No trajectory found, clearing hover state`)
-        chart.setActiveElements([])
-        chart.update("none")
+        updateChartHighlight(chart, [])
 
         setHoveredTrajectoryId(null)
         setTooltipState({ visible: false, position: { x: 0, y: 0 } })
@@ -344,7 +345,7 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
         }
       }
     },
-    [isPanMode, chartData, trajectories, determineTrajectoryType],
+    [isPanMode, chartData, trajectories, determineTrajectoryType, updateChartHighlight],
   )
 
   const handleClick = useCallback(
