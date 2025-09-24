@@ -70,14 +70,28 @@ export function calculateAverageData(
     return firstJobtrekYear && individualImprovement !== 0
   })
 
+  console.log("[v0] CALCULATE_AVERAGE_DEBUG - Total trajectories:", filteredTrajectories.length)
+  console.log("[v0] CALCULATE_AVERAGE_DEBUG - Trajectories with progression:", trajectoriesWithProgression.length)
+
   return sortedYears.map((yearOrLabel, index) => {
     if (isThreePointView) {
       const validScores = trajectoriesWithProgression
         .map((trajectory) => {
           const point = trajectory.points.find((p) => p.year === index)
+          console.log(
+            `[v0] CALCULATE_AVERAGE_DEBUG - Trajectory ${trajectory.id}, looking for year ${index}, found:`,
+            point?.cumulativeScore || "null",
+          )
           return point ? point.cumulativeScore : null
         })
         .filter((score) => score !== null) as number[]
+
+      console.log(
+        `[v0] CALCULATE_AVERAGE_DEBUG - Index ${index}, valid scores:`,
+        validScores.length,
+        "values:",
+        validScores,
+      )
 
       return validScores.length > 0 ? validScores.reduce((sum, score) => sum + score, 0) / validScores.length : null
     } else {
