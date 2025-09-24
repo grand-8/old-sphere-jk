@@ -1,7 +1,11 @@
 import type { LifeTrajectory } from "@/lib/data-service"
 import { PEAK_COLORS, DATASET_STYLES } from "@/config/chart-styles"
 import { applyPeakFinesse } from "./chart-calculations"
-import { calculateIndividualImprovement } from "@/lib/statistics-calculator"
+import {
+  calculateIndividualImprovement,
+  calculateImprovementPercentage,
+  findFirstJobtrekYear,
+} from "@/lib/statistics-calculator"
 
 export function processTrajectories(
   trajectories: LifeTrajectory[],
@@ -158,7 +162,7 @@ export function calculateProgressionData(
     const finalPoint = averageData[2]
 
     if (beforeJobtrek !== null && preJobtrekPoint !== null && finalPoint !== null) {
-      const finalImprovementPercentage = calculateJobtrekToFinalProgression(trajectories)
+      const finalImprovementPercentage = calculateImprovementPercentage(trajectories)
       const jobtrekExactAverage = calculateJobtrekStepAverage(trajectories)
 
       if (jobtrekExactAverage !== null) {
@@ -450,42 +454,6 @@ export function createProgressionDataset(
     isAverage: false,
     isProgression: true,
   }
-}
-
-export function calculateJobtrekToFinalProgression(trajectories: LifeTrajectory[]): number {
-  if (!trajectories || trajectories.length === 0) return 0
-
-  let totalImprovements = 0
-  let validTrajectories = 0
-
-  trajectories.forEach((trajectory) => {
-    const improvement = calculateIndividualImprovement(trajectory)
-
-    const hasJobtrek = trajectory.points.some(
-      (p) =>
-        p.event.includes("Mesure MISt Jobtrek") || p.event.includes("JobtrekSchool") || p.event.includes("Jobtrek"),
-    )
-
-    if (hasJobtrek && improvement !== 0) {
-      totalImprovements += improvement
-      validTrajectories++
-    }
-  })
-
-  return validTrajectories > 0 ? Math.round(totalImprovements / validTrajectories) : 0
-}
-
-function findFirstJobtrekYear(trajectory: LifeTrajectory): number | null {
-  for (const point of trajectory.points) {
-    if (
-      point.event.includes("Mesure MISt Jobtrek") ||
-      point.event.includes("JobtrekSchool") ||
-      point.event.includes("Jobtrek")
-    ) {
-      return point.year
-    }
-  }
-  return null
 }
 
 function calculateJobtrekStepAverage(trajectories: LifeTrajectory[]): number | null {
