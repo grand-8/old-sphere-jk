@@ -18,12 +18,6 @@ export function applyPeakFinesse(baseColor: string, intensity = 0.3): string {
   return `rgb(${finalR}, ${finalG}, ${finalB})`
 }
 
-let lastCalculationTime = 0
-let lastMousePosition = { x: 0, y: 0 }
-let cachedResult: string | null = null
-const THROTTLE_MS = 16 // ~60fps
-const MOUSE_MOVE_THRESHOLD = 3 // pixels
-
 export function calculateDistanceToLineSegment(
   mouseX: number,
   mouseY: number,
@@ -58,62 +52,29 @@ export function findClosestTrajectoryToMouse(
   chart: ChartJS<"line">,
   mouseX: number,
   mouseY: number,
-  maxDistance = 15,
+  maxDistance = 25,
 ): string | null {
-  const now = Date.now()
-  const mouseDistance = Math.sqrt(Math.pow(mouseX - lastMousePosition.x, 2) + Math.pow(mouseY - lastMousePosition.y, 2))
-
-  // Return cached result if mouse hasn't moved much or too soon
-  if (now - lastCalculationTime < THROTTLE_MS || mouseDistance < MOUSE_MOVE_THRESHOLD) {
-    return cachedResult
-  }
-
-  lastCalculationTime = now
-  lastMousePosition = { x: mouseX, y: mouseY }
-
   let closestTrajectoryId: string | null = null
-  let bestScore = Number.POSITIVE_INFINITY
+  let minDistance = Number.POSITIVE_INFINITY
 
   const isThreePointView = (chart.config?.options as any)?.isThreePointView || false
 
-  const shouldLog = now % 100 < 20 // Log only ~20% of the time
-
-  if (shouldLog) {
-    console.log(`[v0] FIND_CLOSEST_UTILS - View: ${isThreePointView ? "SIMPLIFIED" : "COMPLETE"}`)
-    console.log(`[v0] FIND_CLOSEST_UTILS - Starting search with maxDistance: ${maxDistance}`)
-    console.log(`[v0] FIND_CLOSEST_UTILS - Mouse at: (${mouseX.toFixed(1)}, ${mouseY.toFixed(1)})`)
-  }
-
-  let datasetsChecked = 0
-  const maxDatasetsToCheck = 60 // Limit to prevent excessive computation
+  console.log(`[v0] FIND_CLOSEST_UTILS - View: ${isThreePointView ? "SIMPLIFIED" : "COMPLETE"}`)
+  console.log(`[v0] FIND_CLOSEST_UTILS - Starting search with maxDistance: ${maxDistance}`)
+  console.log(`[v0] FIND_CLOSEST_UTILS - Mouse at: (${mouseX.toFixed(1)}, ${mouseY.toFixed(1)})`)
 
   chart.data.datasets.forEach((dataset: any, datasetIndex) => {
-    if (datasetsChecked >= maxDatasetsToCheck) return
-
     const meta = chart.getDatasetMeta(datasetIndex)
-    if (!meta.visible) {
-      return
-    }
+    if (!meta.visible) return
 
     const hasTrajectoryId = dataset.trajectoryId && dataset.trajectoryId !== "undefined"
-    if (!hasTrajectoryId) {
-      return
-    }
+    if (!hasTrajectoryId) return
 
-    datasetsChecked++
+    console.log(
+      `[v0] FIND_CLOSEST_UTILS - Checking dataset ${datasetIndex} (${dataset.trajectoryId}) with ${meta.data.length} points`,
+    )
 
-    if (shouldLog && datasetsChecked <= 3) {
-      // Only log first few datasets
-      console.log(
-        `[v0] FIND_CLOSEST_UTILS - Checking dataset ${datasetIndex} (${dataset.trajectoryId}) with ${meta.data.length} points`,
-      )
-    }
-
-    let minSegmentDistance = Number.POSITIVE_INFINITY
-    let averageDistance = 0
-    let validSegments = 0
-    let mouseXProximity = Number.POSITIVE_INFINITY
-
+    // Check all segments in this trajectory
     for (let i = 0; i < meta.data.length - 1; i++) {
       const point1 = meta.data[i]
       const point2 = meta.data[i + 1]
@@ -122,65 +83,30 @@ export function findClosestTrajectoryToMouse(
 
       const segmentDistance = calculateDistanceToLineSegment(mouseX, mouseY, point1.x, point1.y, point2.x, point2.y)
 
-      if (segmentDistance < minSegmentDistance) {
-        minSegmentDistance = segmentDistance
-      }
-
-      if (minSegmentDistance > maxDistance * 2) {
-        break
-      }
-
-      if (segmentDistance < maxDistance * 3) {
-        averageDistance += segmentDistance
-        validSegments++
-      }
-
-      const segmentCenterX = (point1.x + point2.x) / 2
-      const xDistance = Math.abs(mouseX - segmentCenterX)
-      if (xDistance < mouseXProximity) {
-        mouseXProximity = xDistance
-      }
-
-      if (shouldLog && segmentDistance < maxDistance * 2 && datasetsChecked <= 2) {
-        console.log(
-          `[v0] FIND_CLOSEST_UTILS - Segment ${i}-${i + 1}: distance=${segmentDistance.toFixed(2)}, points=(${point1.x.toFixed(1)},${point1.y.toFixed(1)}) to (${point2.x.toFixed(1)},${point2.y.toFixed(1)})`,
-        )
-      }
-    }
-
-    if (minSegmentDistance > maxDistance) {
-      return
-    }
-
-    averageDistance = validSegments > 0 ? averageDistance / validSegments : minSegmentDistance
-
-    const trajectoryScore = minSegmentDistance * 0.7 + averageDistance * 0.2 + mouseXProximity * 0.1
-
-    if (shouldLog && datasetsChecked <= 3) {
       console.log(
-        `[v0] FIND_CLOSEST_UTILS - ${dataset.trajectoryId}: minDist=${minSegmentDistance.toFixed(2)}, avgDist=${averageDistance.toFixed(2)}, xProx=${mouseXProximity.toFixed(2)}, score=${trajectoryScore.toFixed(2)}`,
+        `[v0] FIND_CLOSEST_UTILS - Segment ${i}-${i + 1}: distance=${segmentDistance.toFixed(2)}, points=(${point1.x.toFixed(1)},${point1.y.toFixed(1)}) to (${point2.x.toFixed(1)},${point2.y.toFixed(1)})`,
       )
-    }
 
-    if (trajectoryScore < bestScore) {
-      bestScore = trajectoryScore
-      closestTrajectoryId = dataset.trajectoryId
-      if (shouldLog) {
+      if (segmentDistance < minDistance) {
+        minDistance = segmentDistance
+        closestTrajectoryId = dataset.trajectoryId
         console.log(
-          `[v0] FIND_CLOSEST_UTILS - NEW BEST: ${closestTrajectoryId} with score ${trajectoryScore.toFixed(2)}`,
+          `[v0] FIND_CLOSEST_UTILS - NEW BEST: ${closestTrajectoryId} with distance ${segmentDistance.toFixed(2)}`,
         )
       }
     }
   })
 
-  if (shouldLog) {
+  // Only return trajectory if within maxDistance
+  if (minDistance <= maxDistance) {
     console.log(
-      `[v0] FIND_CLOSEST_UTILS - Final result: ${closestTrajectoryId || "NONE"} with score ${bestScore.toFixed(2)}`,
+      `[v0] FIND_CLOSEST_UTILS - Final result: ${closestTrajectoryId} with distance ${minDistance.toFixed(2)}`,
     )
+    return closestTrajectoryId
+  } else {
+    console.log(`[v0] FIND_CLOSEST_UTILS - Final result: NONE (closest was ${minDistance.toFixed(2)} > ${maxDistance})`)
+    return null
   }
-
-  cachedResult = closestTrajectoryId
-  return closestTrajectoryId
 }
 
 export function createActiveElementsFromTrajectoryId(
