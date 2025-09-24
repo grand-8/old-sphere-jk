@@ -25,7 +25,7 @@ function isJobtrekEvent(eventName: string): boolean {
 }
 
 // Fonction pour trouver le premier événement Jobtrek dans une trajectoire
-function findFirstJobtrekYear(trajectory: LifeTrajectory): number | null {
+export function findFirstJobtrekYear(trajectory: LifeTrajectory): number | null {
   for (const point of trajectory.points) {
     if (isJobtrekEvent(point.event)) {
       return point.year
