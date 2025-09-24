@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useCallback } from "react"
+import React, { useState, useCallback, useEffect } from "react"
 import Chart from "chart.js/auto"
 import { Line } from "react-chartjs-2"
 import type { LifeTrajectory } from "@/lib/data-service"
@@ -263,17 +263,17 @@ export function LinearChart({ trajectories }: LinearChartProps) {
 
     const datasets = processedTrajectories.map((trajectory) => {
       const isHighlighted = hoveredLineId === trajectory.id
-      return createTrajectoryDataset(trajectory, sortedYears, isThreePointView, "highlighted", isHighlighted)
+      return createTrajectoryDataset(trajectory, sortedYears, isThreePointView, hoveredLineId, isHighlighted)
     })
 
     if (trajectories.length > 1) {
       const averageData = calculateAverageData(sortedYears, processedTrajectories, trajectories, isThreePointView)
       const progressionData = calculateProgressionData(sortedYears, averageData, trajectories)
 
-      datasets.push(createAverageDataset(averageData, "highlighted", isThreePointView))
+      datasets.push(createAverageDataset(averageData, hoveredLineId, isThreePointView))
 
       if (isThreePointView) {
-        datasets.push(createProgressionDataset(progressionData, "highlighted", averageData))
+        datasets.push(createProgressionDataset(progressionData, hoveredLineId, averageData))
       }
     }
 
@@ -299,6 +299,10 @@ export function LinearChart({ trajectories }: LinearChartProps) {
     determineTrajectoryType,
   } = useChartInteractions(trajectories, chartData)
 
+  useEffect(() => {
+    setHoveredLineId(hoveredTrajectory)
+  }, [hoveredTrajectory])
+
   const handleOpenStatistics = useCallback(() => {
     setShowStatistics(true)
   }, [])
@@ -306,6 +310,22 @@ export function LinearChart({ trajectories }: LinearChartProps) {
   const handleCloseStatistics = useCallback(() => {
     setShowStatistics(false)
   }, [])
+
+  const enhancedHandleHover = useCallback(
+    (event: any, activeElements: any[], chart: any) => {
+      console.log(`[v0] HOVER_ENHANCED - Event triggered, activeElements:`, activeElements?.length || 0)
+
+      // Call the main hover handler from the hook
+      handleHover(event, activeElements, chart)
+
+      // Force chart update to apply hover styles
+      if (chart && activeElements?.length > 0) {
+        console.log(`[v0] HOVER_ENHANCED - Forcing chart update for hover styles`)
+        chart.update("none")
+      }
+    },
+    [handleHover],
+  )
 
   const enhancedHandleClick = useCallback(
     (event: any, elements: any[], chart: any) => {
@@ -353,6 +373,7 @@ export function LinearChart({ trajectories }: LinearChartProps) {
       interaction: {
         mode: "nearest",
         intersect: false,
+        axis: "xy",
       },
       plugins: {
         customLabelAlignment: {
@@ -442,7 +463,7 @@ export function LinearChart({ trajectories }: LinearChartProps) {
           grid: CHART_SCALES.y1.grid,
         },
       },
-      onHover: handleHover,
+      onHover: enhancedHandleHover,
       onClick: enhancedHandleClick,
       isThreePointView: isThreePointView,
     }),
@@ -454,7 +475,7 @@ export function LinearChart({ trajectories }: LinearChartProps) {
       trajectories,
       zoomLevel,
       isPanMode,
-      handleHover,
+      enhancedHandleHover,
       enhancedHandleClick,
     ],
   )
