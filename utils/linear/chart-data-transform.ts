@@ -420,7 +420,7 @@ export function calculateJobtrekToFinalProgression(trajectories: LifeTrajectory[
         p.event.includes("Mesure MISt Jobtrek") || p.event.includes("JobtrekSchool") || p.event.includes("Jobtrek"),
     )
 
-    if (hasJobtrek) {
+    if (hasJobtrek && improvement !== 0) {
       totalImprovements += improvement
       validTrajectories++
     }

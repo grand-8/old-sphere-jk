@@ -127,13 +127,17 @@ export function calculateImprovementPercentage(trajectories: LifeTrajectory[]): 
       `[v0] STAT MODAL - Trajectory ${index} (${trajectory.userCode}): improvement = ${individualImprovement}%`,
     )
 
-    // Inclure toutes les trajectoires qui ont un calcul valide (même 0%)
+    // Exclure toutes les trajectoires qui ont un calcul valide à 0% (même 0%)
     const firstJobtrekYear = findFirstJobtrekYear(trajectory)
-    if (firstJobtrekYear) {
+    if (firstJobtrekYear && individualImprovement !== 0) {
       totalImprovements += individualImprovement
       validTrajectories++
       console.log(
         `[v0] STAT MODAL - Added trajectory ${trajectory.userCode}: running total = ${totalImprovements}, valid count = ${validTrajectories}`,
+      )
+    } else if (firstJobtrekYear && individualImprovement === 0) {
+      console.log(
+        `[v0] STAT MODAL - Excluded trajectory ${trajectory.userCode}: 0% improvement (no post-jobtrek progression)`,
       )
     } else {
       console.log(`[v0] STAT MODAL - Skipped trajectory ${trajectory.userCode}: no Jobtrek year found`)
@@ -142,7 +146,7 @@ export function calculateImprovementPercentage(trajectories: LifeTrajectory[]): 
 
   if (validTrajectories === 0) return 0
 
-  // Retourner la moyenne des améliorations individuelles
+  // Retourner la moyenne des améliorations individuelles (excluant les 0%)
   const result = Math.round(totalImprovements / validTrajectories)
   console.log(`[v0] STAT MODAL - Final result: ${result}% (total: ${totalImprovements}, valid: ${validTrajectories})`)
 
@@ -250,7 +254,7 @@ function calculateProgressionBreakdown(trajectories: LifeTrajectory[]): {
   totalCount: number
 } {
   let progressionCount = 0
-  let stagnationCount = 0
+  const stagnationCount = 0
   let regressionCount = 0
   let totalCount = 0
 
@@ -258,20 +262,19 @@ function calculateProgressionBreakdown(trajectories: LifeTrajectory[]): {
     const individualImprovement = calculateIndividualImprovement(trajectory)
     const firstJobtrekYear = findFirstJobtrekYear(trajectory)
 
-    if (firstJobtrekYear) {
+    if (firstJobtrekYear && individualImprovement !== 0) {
       totalCount++
       if (individualImprovement > 0) {
         progressionCount++
-      } else if (individualImprovement === 0) {
-        stagnationCount++
       } else {
         regressionCount++
       }
     }
+    // Note: Les parcours à 0% ne sont plus comptés dans stagnationCount car ils sont exclus
   })
 
   const progressionPercentage = totalCount > 0 ? Math.round((progressionCount / totalCount) * 100) : 0
-  const stagnationPercentage = totalCount > 0 ? Math.round((stagnationCount / totalCount) * 100) : 0
+  const stagnationPercentage = 0 // Plus de stagnation car les 0% sont exclus
   const regressionPercentage = totalCount > 0 ? Math.round((regressionCount / totalCount) * 100) : 0
 
   return {
@@ -286,15 +289,18 @@ function calculateSeparateImpactCharts(trajectories: LifeTrajectory[]): {
   mistJobtrek: { startAvg: number; jobtrekAvg: number; finalAvg: number }
   jobtrekSchool: { startAvg: number; jobtrekAvg: number; finalAvg: number }
 } {
-  const mistTrajectories = trajectories.filter((trajectory) =>
-    trajectory.points.some((p) => p.event.includes("Mesure MISt Jobtrek")),
-  )
+  const mistTrajectories = trajectories.filter((trajectory) => {
+    const hasMist = trajectory.points.some((p) => p.event.includes("Mesure MISt Jobtrek"))
+    const hasProgression = calculateIndividualImprovement(trajectory) !== 0
+    return hasMist && hasProgression
+  })
 
-  const schoolTrajectories = trajectories.filter(
-    (trajectory) =>
-      trajectory.points.some((p) => p.event.includes("JobtrekSchool")) &&
-      !trajectory.points.some((p) => p.event.includes("Mesure MISt Jobtrek")),
-  )
+  const schoolTrajectories = trajectories.filter((trajectory) => {
+    const hasSchool = trajectory.points.some((p) => p.event.includes("JobtrekSchool"))
+    const noMist = !trajectory.points.some((p) => p.event.includes("Mesure MISt Jobtrek"))
+    const hasProgression = calculateIndividualImprovement(trajectory) !== 0
+    return hasSchool && noMist && hasProgression
+  })
 
   const calculateAverages = (trajectories: LifeTrajectory[]) => {
     if (trajectories.length === 0) return { startAvg: 0, jobtrekAvg: 0, finalAvg: 0 }
