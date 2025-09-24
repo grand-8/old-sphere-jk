@@ -48,16 +48,61 @@ export function calculateDistanceToLineSegment(
   return Math.sqrt(dx * dx + dy * dy)
 }
 
+/**
+ * Calculate the centroid (center of mass) of a trajectory
+ * Used for trajectory prioritization when distances are similar
+ */
+function calculateTrajectoryCentroid(chart: ChartJS<"line">, datasetIndex: number): { x: number; y: number } | null {
+  const meta = chart.getDatasetMeta(datasetIndex)
+  if (!meta.data || meta.data.length === 0) return null
+
+  let sumX = 0
+  let sumY = 0
+  let count = 0
+
+  meta.data.forEach((point) => {
+    if (point && typeof point.x === "number" && typeof point.y === "number") {
+      sumX += point.x
+      sumY += point.y
+      count++
+    }
+  })
+
+  if (count === 0) return null
+
+  return {
+    x: sumX / count,
+    y: sumY / count,
+  }
+}
+
+/**
+ * Calculate distance between two points
+ */
+function calculatePointDistance(x1: number, y1: number, x2: number, y2: number): number {
+  const dx = x2 - x1
+  const dy = y2 - y1
+  return Math.sqrt(dx * dx + dy * dy)
+}
+
 export function findClosestTrajectoryToMouse(
   chart: ChartJS<"line">,
   mouseX: number,
   mouseY: number,
   maxDistance = 25,
 ): string | null {
-  let closestTrajectoryId: string | null = null
-  let minDistance = Number.POSITIVE_INFINITY
-
   const isThreePointView = (chart.config?.options as any)?.isThreePointView || false
+
+  const adaptiveMaxDistance = isThreePointView ? maxDistance : 15
+
+  interface TrajectoryCandidate {
+    trajectoryId: string
+    minSegmentDistance: number
+    centroidDistance: number
+    datasetIndex: number
+  }
+
+  const candidates: TrajectoryCandidate[] = []
 
   chart.data.datasets.forEach((dataset: any, datasetIndex) => {
     const meta = chart.getDatasetMeta(datasetIndex)
@@ -66,6 +111,9 @@ export function findClosestTrajectoryToMouse(
     const hasTrajectoryId = dataset.trajectoryId && dataset.trajectoryId !== "undefined"
     if (!hasTrajectoryId) return
 
+    let minSegmentDistance = Number.POSITIVE_INFINITY
+
+    // Find minimum distance to any segment of this trajectory
     for (let i = 0; i < meta.data.length - 1; i++) {
       const point1 = meta.data[i]
       const point2 = meta.data[i + 1]
@@ -74,19 +122,47 @@ export function findClosestTrajectoryToMouse(
 
       const segmentDistance = calculateDistanceToLineSegment(mouseX, mouseY, point1.x, point1.y, point2.x, point2.y)
 
-      if (segmentDistance < minDistance) {
-        minDistance = segmentDistance
-        closestTrajectoryId = dataset.trajectoryId
+      if (segmentDistance < minSegmentDistance) {
+        minSegmentDistance = segmentDistance
       }
+    }
+
+    // Only consider trajectories within the adaptive distance threshold
+    if (minSegmentDistance <= adaptiveMaxDistance) {
+      const centroid = calculateTrajectoryCentroid(chart, datasetIndex)
+      const centroidDistance = centroid
+        ? calculatePointDistance(mouseX, mouseY, centroid.x, centroid.y)
+        : Number.POSITIVE_INFINITY
+
+      candidates.push({
+        trajectoryId: dataset.trajectoryId,
+        minSegmentDistance,
+        centroidDistance,
+        datasetIndex,
+      })
     }
   })
 
-  if (minDistance <= maxDistance) {
-    console.log(`[v0] FIND_CLOSEST - Found: ${closestTrajectoryId} (distance: ${minDistance.toFixed(1)})`)
-    return closestTrajectoryId
-  } else {
-    return null
-  }
+  if (candidates.length === 0) return null
+
+  candidates.sort((a, b) => {
+    // Primary criterion: minimum segment distance
+    const segmentDiff = a.minSegmentDistance - b.minSegmentDistance
+
+    // If segment distances are very close (within 2 pixels), use centroid distance as tiebreaker
+    if (Math.abs(segmentDiff) < 2) {
+      return a.centroidDistance - b.centroidDistance
+    }
+
+    return segmentDiff
+  })
+
+  const winner = candidates[0]
+  console.log(
+    `[v0] FIND_CLOSEST - Found: ${winner.trajectoryId} (segment: ${winner.minSegmentDistance.toFixed(1)}px, centroid: ${winner.centroidDistance.toFixed(1)}px)`,
+  )
+
+  return winner.trajectoryId
 }
 
 export function createActiveElementsFromTrajectoryId(
