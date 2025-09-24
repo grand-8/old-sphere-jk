@@ -64,10 +64,19 @@ export function calculateAverageData(
   isThreePointView: boolean,
 ): (number | null)[] {
   const filteredTrajectories = isThreePointView ? processedTrajectories : trajectories
-  const trajectoriesWithProgression = filteredTrajectories.filter((trajectory) => {
-    const individualImprovement = calculateIndividualImprovement(trajectory)
-    const firstJobtrekYear = findFirstJobtrekYear(trajectory)
-    return firstJobtrekYear && individualImprovement !== 0
+
+  const trajectoriesWithProgression = filteredTrajectories.filter((trajectory, index) => {
+    if (isThreePointView) {
+      // Use original trajectory for validation but processed trajectory for data
+      const originalTrajectory = trajectories[index]
+      const individualImprovement = calculateIndividualImprovement(originalTrajectory)
+      const firstJobtrekYear = findFirstJobtrekYear(originalTrajectory)
+      return firstJobtrekYear && individualImprovement !== 0
+    } else {
+      const individualImprovement = calculateIndividualImprovement(trajectory)
+      const firstJobtrekYear = findFirstJobtrekYear(trajectory)
+      return firstJobtrekYear && individualImprovement !== 0
+    }
   })
 
   console.log("[v0] CALCULATE_AVERAGE_DEBUG - Total trajectories:", filteredTrajectories.length)
@@ -78,10 +87,6 @@ export function calculateAverageData(
       const validScores = trajectoriesWithProgression
         .map((trajectory) => {
           const point = trajectory.points.find((p) => p.year === index)
-          console.log(
-            `[v0] CALCULATE_AVERAGE_DEBUG - Trajectory ${trajectory.id}, looking for year ${index}, found:`,
-            point?.cumulativeScore || "null",
-          )
           return point ? point.cumulativeScore : null
         })
         .filter((score) => score !== null) as number[]
