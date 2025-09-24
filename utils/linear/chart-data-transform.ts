@@ -296,9 +296,9 @@ export function createAverageDataset(
   averageData: (number | null)[],
   hoveredTrajectory: string | null,
   isThreePointView?: boolean,
-  trajectories?: LifeTrajectory[], // Added trajectories parameter to find pre-Jobtrek points
+  trajectories?: LifeTrajectory[],
 ) {
-  let displayData = averageData
+  const displayData = averageData
 
   console.log("[v0] ===== AVERAGE LINE ANALYSIS =====")
   console.log("[v0] View type:", isThreePointView ? "THREE_POINT_VIEW" : "SIMPLIFIED_VIEW")
@@ -309,96 +309,7 @@ export function createAverageDataset(
     averageData.map((v) => v?.toFixed(2) || "null"),
   )
 
-  if (isThreePointView === false && trajectories) {
-    const trajectoriesWithPostJobtrekProgression = trajectories.filter((trajectory) => {
-      const sortedPoints = [...trajectory.points].sort((a, b) => a.year - b.year)
-
-      const jobtrekPointIndex = sortedPoints.findIndex(
-        (p) => p.event.toLowerCase().includes("jobtrek") || p.categorie.toLowerCase().includes("jobtrek"),
-      )
-
-      return jobtrekPointIndex >= 0 && jobtrekPointIndex < sortedPoints.length - 1
-    })
-
-    console.log("[v0] PROGRESSION_ANALYSIS - Total trajectories:", trajectories.length)
-    console.log(
-      "[v0] PROGRESSION_ANALYSIS - Trajectories with post-Jobtrek progression:",
-      trajectoriesWithPostJobtrekProgression.length,
-    )
-
-    if (trajectoriesWithPostJobtrekProgression.length === 0) {
-      console.log("[v0] PROGRESSION_ANALYSIS - No trajectories with post-Jobtrek progression found")
-      return {
-        ...createBaseAverageDataset(averageData, hoveredTrajectory),
-        data: averageData.map(() => null),
-      }
-    }
-
-    const validIndices = averageData.map((value, index) => ({ value, index })).filter((item) => item.value !== null)
-
-    if (validIndices.length >= 3) {
-      const firstIndex = validIndices[0].index
-      const lastIndex = validIndices[validIndices.length - 1].index
-
-      const preJobtrekIndex = findAveragePreJobtrekIndex(trajectoriesWithPostJobtrekProgression, validIndices)
-
-      const firstValue = averageData[firstIndex]
-      const preJobtrekValue = averageData[preJobtrekIndex]
-      const lastValue = averageData[lastIndex]
-
-      if (firstValue !== null && preJobtrekValue !== null && lastValue !== null) {
-        const segment1Progression = ((preJobtrekValue - firstValue) / Math.abs(firstValue)) * 100
-        const segment2Progression = ((lastValue - preJobtrekValue) / Math.abs(preJobtrekValue)) * 100
-        const totalProgression = ((lastValue - firstValue) / Math.abs(firstValue)) * 100
-
-        console.log("[v0] PROGRESSION_ANALYSIS - Point 1 (First):", firstValue.toFixed(2))
-        console.log("[v0] PROGRESSION_ANALYSIS - Point 2 (Pre-Jobtrek):", preJobtrekValue.toFixed(2))
-        console.log("[v0] PROGRESSION_ANALYSIS - Point 3 (Final):", lastValue.toFixed(2))
-        console.log(
-          "[v0] PROGRESSION_ANALYSIS - Segment 1 progression (Point 1 → Point 2):",
-          segment1Progression.toFixed(2) + "%",
-        )
-        console.log(
-          "[v0] PROGRESSION_ANALYSIS - Segment 2 progression (Point 2 → Point 3):",
-          segment2Progression.toFixed(2) + "%",
-        )
-        console.log(
-          "[v0] PROGRESSION_ANALYSIS - Total progression (Point 1 → Point 3):",
-          totalProgression.toFixed(2) + "%",
-        )
-      }
-
-      displayData = averageData.map((value, index) => {
-        if (index === firstIndex || index === preJobtrekIndex || index === lastIndex) {
-          return value
-        }
-        return null
-      })
-    } else if (validIndices.length >= 2) {
-      const firstIndex = validIndices[0].index
-      const lastIndex = validIndices[validIndices.length - 1].index
-
-      const firstValue = averageData[firstIndex]
-      const lastValue = averageData[lastIndex]
-
-      if (firstValue !== null && lastValue !== null) {
-        const totalProgression = ((lastValue - firstValue) / Math.abs(firstValue)) * 100
-        console.log("[v0] PROGRESSION_ANALYSIS - 2-point fallback - Point 1:", firstValue.toFixed(2))
-        console.log("[v0] PROGRESSION_ANALYSIS - 2-point fallback - Point 2:", lastValue.toFixed(2))
-        console.log(
-          "[v0] PROGRESSION_ANALYSIS - 2-point fallback - Total progression:",
-          totalProgression.toFixed(2) + "%",
-        )
-      }
-
-      displayData = averageData.map((value, index) => {
-        if (index === firstIndex || index === lastIndex) {
-          return value
-        }
-        return null
-      })
-    }
-  } else if (isThreePointView === true && averageData.length === 3) {
+  if (isThreePointView === true && averageData.length === 3) {
     const beforeJobtrek = averageData[0]
     const preJobtrekPoint = averageData[1]
     const finalPoint = averageData[2]
@@ -484,40 +395,6 @@ function createBaseAverageDataset(displayData: (number | null)[], hoveredTraject
   }
 }
 
-function findAveragePreJobtrekIndex(
-  trajectories: LifeTrajectory[],
-  validIndices: { value: number | null; index: number }[],
-): number {
-  const preJobtrekIndices: number[] = []
-
-  trajectories.forEach((trajectory) => {
-    const sortedPoints = [...trajectory.points].sort((a, b) => a.year - b.year)
-
-    const jobtrekPointIndex = sortedPoints.findIndex(
-      (p) => p.event.toLowerCase().includes("jobtrek") || p.categorie.toLowerCase().includes("jobtrek"),
-    )
-
-    if (jobtrekPointIndex > 0) {
-      const preJobtrekPoint = sortedPoints[jobtrekPointIndex - 1]
-
-      const correspondingIndex = validIndices.findIndex(
-        (item) => item.index === sortedPoints.findIndex((p) => p.year === preJobtrekPoint.year),
-      )
-
-      if (correspondingIndex !== -1) {
-        preJobtrekIndices.push(validIndices[correspondingIndex].index)
-      }
-    }
-  })
-
-  if (preJobtrekIndices.length > 0) {
-    const averageIndex = Math.round(preJobtrekIndices.reduce((sum, idx) => sum + idx, 0) / preJobtrekIndices.length)
-    return averageIndex
-  }
-
-  return validIndices[Math.floor(validIndices.length / 2)].index
-}
-
 export function createProgressionDataset(
   progressionData: (number | null)[],
   hoveredTrajectory: string | null,
@@ -573,42 +450,6 @@ export function createProgressionDataset(
     isAverage: false,
     isProgression: true,
   }
-}
-
-export function calculateBeforeToJobtrekProgression(trajectories: LifeTrajectory[]): number {
-  if (!trajectories || trajectories.length === 0) return 0
-
-  let totalImprovements = 0
-  let validTrajectories = 0
-
-  trajectories.forEach((trajectory) => {
-    const jobtrekPoint = trajectory.points.find(
-      (p) =>
-        p.event.includes("Mesure MISt Jobtrek") || p.event.includes("JobtrekSchool") || p.event.includes("Jobtrek"),
-    )
-
-    if (!jobtrekPoint) return
-
-    const jobtrekIndex = trajectory.points.findIndex((p) => p === jobtrekPoint)
-    if (jobtrekIndex <= 0) return
-
-    const previousPoint = trajectory.points[jobtrekIndex - 1]
-
-    const previousScore = previousPoint.cumulativeScore
-    const jobtrekScore = jobtrekPoint.cumulativeScore
-
-    if (previousScore === 0) {
-      const improvement = jobtrekScore < 0 ? Math.round(jobtrekScore * 100) : Math.round(jobtrekScore * 100)
-      totalImprovements += improvement
-    } else {
-      const improvement = ((jobtrekScore - previousScore) / Math.abs(previousScore)) * 100
-      totalImprovements += Math.round(improvement)
-    }
-
-    validTrajectories++
-  })
-
-  return validTrajectories > 0 ? Math.round(totalImprovements / validTrajectories) : 0
 }
 
 export function calculateJobtrekToFinalProgression(trajectories: LifeTrajectory[]): number {
