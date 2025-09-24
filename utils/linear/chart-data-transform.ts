@@ -250,10 +250,21 @@ export function createAverageDataset(
 ) {
   let displayData = averageData
   if (isThreePointView === false) {
-    // In full display mode, show only first and last points for a straight line
     const validIndices = averageData.map((value, index) => ({ value, index })).filter((item) => item.value !== null)
 
-    if (validIndices.length >= 2) {
+    if (validIndices.length >= 3) {
+      const firstIndex = validIndices[0].index
+      const middleIndex = validIndices[Math.floor(validIndices.length / 2)].index // Point Jobtrek
+      const lastIndex = validIndices[validIndices.length - 1].index
+
+      displayData = averageData.map((value, index) => {
+        if (index === firstIndex || index === middleIndex || index === lastIndex) {
+          return value
+        }
+        return null
+      })
+    } else if (validIndices.length >= 2) {
+      // Fallback to 2 points if less than 3 valid points
       const firstIndex = validIndices[0].index
       const lastIndex = validIndices[validIndices.length - 1].index
 
