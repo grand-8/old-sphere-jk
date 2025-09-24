@@ -24,17 +24,22 @@ export function processTrajectories(
       const sortedPoints = [...trajectory.points].sort((a, b) => a.year - b.year)
 
       const beforeJobtrek = sortedPoints[0]
-      const jobtrekPoint =
-        sortedPoints.find(
-          (p) => p.event.toLowerCase().includes("jobtrek") || p.categorie.toLowerCase().includes("jobtrek"),
-        ) || sortedPoints[Math.floor(sortedPoints.length / 2)]
+
+      const jobtrekPointIndex = sortedPoints.findIndex(
+        (p) => p.event.toLowerCase().includes("jobtrek") || p.categorie.toLowerCase().includes("jobtrek"),
+      )
+
+      // Get the point just before Jobtrek, or fallback to middle point
+      const preJobtrekPoint =
+        jobtrekPointIndex > 0 ? sortedPoints[jobtrekPointIndex - 1] : sortedPoints[Math.floor(sortedPoints.length / 2)]
+
       const finalPoint = sortedPoints[sortedPoints.length - 1]
 
       return {
         ...trajectory,
         points: [
           { ...beforeJobtrek, year: 0 },
-          { ...jobtrekPoint, year: 1 },
+          { ...preJobtrekPoint, year: 1 }, // Now this is the point BEFORE Jobtrek
           { ...finalPoint, year: 2 },
         ],
       }
