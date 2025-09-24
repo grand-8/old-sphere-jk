@@ -250,6 +250,16 @@ export function createAverageDataset(
   trajectories?: LifeTrajectory[], // Added trajectories parameter to find pre-Jobtrek points
 ) {
   let displayData = averageData
+
+  console.log("[v0] ===== AVERAGE LINE ANALYSIS =====")
+  console.log("[v0] View type:", isThreePointView ? "THREE_POINT_VIEW" : "SIMPLIFIED_VIEW")
+  console.log("[v0] Total trajectories:", trajectories?.length || 0)
+  console.log("[v0] Average data points:", averageData.length)
+  console.log(
+    "[v0] Average data values:",
+    averageData.map((v) => v?.toFixed(2) || "null"),
+  )
+
   if (isThreePointView === false && trajectories) {
     const trajectoriesWithPostJobtrekProgression = trajectories.filter((trajectory) => {
       const sortedPoints = [...trajectory.points].sort((a, b) => a.year - b.year)
@@ -346,7 +356,36 @@ export function createAverageDataset(
         return null
       })
     }
+  } else if (isThreePointView === true && averageData.length === 3) {
+    const beforeJobtrek = averageData[0]
+    const jobtrekPoint = averageData[1]
+    const finalPoint = averageData[2]
+
+    if (beforeJobtrek !== null && jobtrekPoint !== null && finalPoint !== null) {
+      const segment1Progression = ((jobtrekPoint - beforeJobtrek) / Math.abs(beforeJobtrek)) * 100
+      const segment2Progression = ((finalPoint - jobtrekPoint) / Math.abs(jobtrekPoint)) * 100
+      const totalProgression = ((finalPoint - beforeJobtrek) / Math.abs(beforeJobtrek)) * 100
+
+      console.log("[v0] THREE_POINT_ANALYSIS - Point 1 (Avant Jobtrek):", beforeJobtrek.toFixed(2))
+      console.log("[v0] THREE_POINT_ANALYSIS - Point 2 (Jobtrek):", jobtrekPoint.toFixed(2))
+      console.log("[v0] THREE_POINT_ANALYSIS - Point 3 (Final):", finalPoint.toFixed(2))
+      console.log(
+        "[v0] THREE_POINT_ANALYSIS - Segment 1 progression (Avant → Jobtrek):",
+        segment1Progression.toFixed(2) + "%",
+      )
+      console.log(
+        "[v0] THREE_POINT_ANALYSIS - Segment 2 progression (Jobtrek → Final):",
+        segment2Progression.toFixed(2) + "%",
+      )
+      console.log("[v0] THREE_POINT_ANALYSIS - Total progression (Avant → Final):", totalProgression.toFixed(2) + "%")
+    }
   }
+
+  console.log(
+    "[v0] Final display data:",
+    displayData.map((v) => v?.toFixed(2) || "null"),
+  )
+  console.log("[v0] ===== END ANALYSIS =====")
 
   return createBaseAverageDataset(displayData, hoveredTrajectory)
 }
