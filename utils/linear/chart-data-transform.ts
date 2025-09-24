@@ -166,24 +166,35 @@ export function calculateProgressionData(
         return null // No line before Pré-Jobtrek
       }
       if (index === 1) {
-        // Use the average score at Pré-Jobtrek as the baseline (0% progression)
-        console.log("[v0] PROGRESSION_LINE_DEBUG - Index 1 (Pré-Jobtrek): 0% (Jobtrek start point)")
-        return 0
+        const currentScore = averageData[1] // Pré-Jobtrek score (1.27)
+        const referenceScore = averageData[0] // Avant Jobtrek score (0.30)
+
+        if (currentScore === null || referenceScore === null || referenceScore === 0) {
+          console.log("[v0] PROGRESSION_LINE_DEBUG - Index 1 (Pré-Jobtrek): null (invalid scores)")
+          return null
+        }
+
+        const progressionPercent = ((currentScore - referenceScore) / Math.abs(referenceScore)) * 100
+        console.log(
+          "[v0] PROGRESSION_LINE_DEBUG - Index 1 (Pré-Jobtrek):",
+          progressionPercent.toFixed(2) + "% (progression from Avant Jobtrek)",
+        )
+        return Math.max(0, progressionPercent)
       }
 
-      // Calculate progression from Pré-Jobtrek to Final
+      // Calculate progression from Avant Jobtrek to Final (not from Pré-Jobtrek to Final)
       const currentScore = averageData[index] // Final score
-      const jobtrekReferenceScore = averageData[1] // Use Pré-Jobtrek (durant Jobtrek) as reference instead of Avant Jobtrek
+      const referenceScore = averageData[0] // Use Avant Jobtrek as reference for consistency
 
-      if (currentScore === null || jobtrekReferenceScore === null || jobtrekReferenceScore === 0) {
+      if (currentScore === null || referenceScore === null || referenceScore === 0) {
         console.log("[v0] PROGRESSION_LINE_DEBUG - Index 2 (Final): null (invalid scores)")
         return null
       }
 
-      const progressionPercent = ((currentScore - jobtrekReferenceScore) / Math.abs(jobtrekReferenceScore)) * 100
+      const progressionPercent = ((currentScore - referenceScore) / Math.abs(referenceScore)) * 100
       console.log(
         "[v0] PROGRESSION_LINE_DEBUG - Index 2 (Final):",
-        progressionPercent.toFixed(2) + "% (progression from Jobtrek)",
+        progressionPercent.toFixed(2) + "% (total progression from Avant Jobtrek)",
       )
       return Math.max(0, progressionPercent)
     }
