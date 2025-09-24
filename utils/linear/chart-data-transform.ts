@@ -18,23 +18,27 @@ export function processTrajectories(
   let processedTrajectories: LifeTrajectory[]
 
   if (isThreePointView) {
-    sortedYears = ["Avant Jobtrek", "Jobtrek", "Étape finale"]
+    sortedYears = ["Avant Jobtrek", "Pré-Jobtrek", "Étape finale"]
 
     processedTrajectories = trajectories.map((trajectory) => {
       const sortedPoints = [...trajectory.points].sort((a, b) => a.year - b.year)
 
       const beforeJobtrek = sortedPoints[0]
-      const jobtrekPoint =
-        sortedPoints.find(
-          (p) => p.event.toLowerCase().includes("jobtrek") || p.categorie.toLowerCase().includes("jobtrek"),
-        ) || sortedPoints[Math.floor(sortedPoints.length / 2)]
+
+      const jobtrekPointIndex = sortedPoints.findIndex(
+        (p) => p.event.toLowerCase().includes("jobtrek") || p.categorie.toLowerCase().includes("jobtrek"),
+      )
+
+      const preJobtrekPoint =
+        jobtrekPointIndex > 0 ? sortedPoints[jobtrekPointIndex - 1] : sortedPoints[Math.floor(sortedPoints.length / 2)]
+
       const finalPoint = sortedPoints[sortedPoints.length - 1]
 
       return {
         ...trajectory,
         points: [
           { ...beforeJobtrek, year: 0 },
-          { ...jobtrekPoint, year: 1 },
+          { ...preJobtrekPoint, year: 1 },
           { ...finalPoint, year: 2 },
         ],
       }
@@ -59,18 +63,44 @@ export function calculateAverageData(
   trajectories: LifeTrajectory[],
   isThreePointView: boolean,
 ): (number | null)[] {
+  const filteredTrajectories = isThreePointView ? processedTrajectories : trajectories
+
+  const trajectoriesWithProgression = filteredTrajectories.filter((trajectory, index) => {
+    if (isThreePointView) {
+      // Use original trajectory for validation but processed trajectory for data
+      const originalTrajectory = trajectories[index]
+      const individualImprovement = calculateIndividualImprovement(originalTrajectory)
+      const firstJobtrekYear = findFirstJobtrekYear(originalTrajectory)
+      return firstJobtrekYear && individualImprovement !== 0
+    } else {
+      const individualImprovement = calculateIndividualImprovement(trajectory)
+      const firstJobtrekYear = findFirstJobtrekYear(trajectory)
+      return firstJobtrekYear && individualImprovement !== 0
+    }
+  })
+
+  console.log("[v0] CALCULATE_AVERAGE_DEBUG - Total trajectories:", filteredTrajectories.length)
+  console.log("[v0] CALCULATE_AVERAGE_DEBUG - Trajectories with progression:", trajectoriesWithProgression.length)
+
   return sortedYears.map((yearOrLabel, index) => {
     if (isThreePointView) {
-      const validScores = processedTrajectories
+      const validScores = trajectoriesWithProgression
         .map((trajectory) => {
           const point = trajectory.points.find((p) => p.year === index)
           return point ? point.cumulativeScore : null
         })
         .filter((score) => score !== null) as number[]
 
+      console.log(
+        `[v0] CALCULATE_AVERAGE_DEBUG - Index ${index}, valid scores:`,
+        validScores.length,
+        "values:",
+        validScores,
+      )
+
       return validScores.length > 0 ? validScores.reduce((sum, score) => sum + score, 0) / validScores.length : null
     } else {
-      const validScores = trajectories
+      const validScores = trajectoriesWithProgression
         .map((trajectory) => {
           const point = trajectory.points.find((p) => p.year === yearOrLabel)
           return point ? point.cumulativeScore : null
@@ -82,55 +112,81 @@ export function calculateAverageData(
   })
 }
 
+function calculateDynamicYAxisMax(improvementPercentage: number): number {
+  const maxWithBuffer = improvementPercentage * 1.1 // Add 10% buffer
+  return Math.ceil(maxWithBuffer / 10) * 10 // Round up to nearest 10
+}
+
+function calculateJobtrekPosition(
+  beforeJobtrekScore: number,
+  jobtrekExactScore: number,
+  finalScore: number,
+  finalImprovementPercentage: number,
+): number {
+  // Calculate progression brute from before Jobtrek to Jobtrek exact
+  const jobtrekProgression = ((jobtrekExactScore - beforeJobtrekScore) / beforeJobtrekScore) * 100
+
+  // Calculate total progression from before Jobtrek to final
+  const totalProgression = ((finalScore - beforeJobtrekScore) / beforeJobtrekScore) * 100
+
+  // Normalization factor: finalImprovementPercentage / totalProgression
+  const normalizationFactor = finalImprovementPercentage / totalProgression
+
+  // Apply normalization to Jobtrek progression
+  const normalizedJobtrekPosition = jobtrekProgression * normalizationFactor
+
+  console.log("[v0] NORMALIZATION_DEBUG - Jobtrek progression (brute):", jobtrekProgression.toFixed(2) + "%")
+  console.log("[v0] NORMALIZATION_DEBUG - Total progression (brute):", totalProgression.toFixed(2) + "%")
+  console.log("[v0] NORMALIZATION_DEBUG - Normalization factor:", normalizationFactor.toFixed(3))
+  console.log("[v0] NORMALIZATION_DEBUG - Normalized Jobtrek position:", normalizedJobtrekPosition.toFixed(2) + "%")
+
+  return Math.max(0, normalizedJobtrekPosition)
+}
+
 export function calculateProgressionData(
   sortedYears: (number | string)[],
   averageData: (number | null)[],
   trajectories?: LifeTrajectory[],
 ): (number | null)[] {
   if (!trajectories || trajectories.length === 0) {
-    // Fallback to original logic if no trajectories provided
-    return sortedYears.map((yearOrLabel, index) => {
-      if (index === 0) return 0
-      const currentScore = averageData[index]
-      const previousScore = averageData[index - 1]
-      if (currentScore === null || previousScore === null) return null
-      const jobtrekIndex = Math.floor(sortedYears.length / 2)
-      const jobtrekScore = averageData[jobtrekIndex]
-      if (jobtrekScore === null || jobtrekScore === 0) return 0
-      const progression = ((currentScore - jobtrekScore) / Math.abs(jobtrekScore)) * 100
-      return Math.max(0, Math.min(100, progression))
-    })
+    return sortedYears.map(() => null)
   }
 
-  // This line shows progression percentages relative to the total improvement from Jobtrek to Final
-  // The data represents how much of the total progression has been achieved at each stage
   if (sortedYears.length === 3) {
-    const beforeAverageScore = averageData[0] // Index 0 is "Avant Jobtrek" point
-    const jobtrekAverageScore = averageData[1] // Index 1 is Jobtrek point
-    const finalAverageScore = averageData[2] // Index 2 is Final point
+    const beforeJobtrek = averageData[0]
+    const preJobtrekPoint = averageData[1]
+    const finalPoint = averageData[2]
 
-    if (beforeAverageScore === null || jobtrekAverageScore === null || finalAverageScore === null) {
-      return [null, null, null]
+    if (beforeJobtrek !== null && preJobtrekPoint !== null && finalPoint !== null) {
+      const finalImprovementPercentage = calculateJobtrekToFinalProgression(trajectories)
+      const jobtrekExactAverage = calculateJobtrekStepAverage(trajectories)
+
+      if (jobtrekExactAverage !== null) {
+        const dynamicYAxisMax = calculateDynamicYAxisMax(finalImprovementPercentage)
+
+        const jobtrekPosition = calculateJobtrekPosition(
+          beforeJobtrek,
+          jobtrekExactAverage,
+          finalPoint,
+          finalImprovementPercentage,
+        )
+
+        console.log("[v0] DYNAMIC_CALCULATION_DEBUG - Before Jobtrek:", beforeJobtrek.toFixed(2))
+        console.log("[v0] DYNAMIC_CALCULATION_DEBUG - Jobtrek Exact Average:", jobtrekExactAverage.toFixed(2))
+        console.log("[v0] DYNAMIC_CALCULATION_DEBUG - Final Point:", finalPoint.toFixed(2))
+        console.log("[v0] DYNAMIC_CALCULATION_DEBUG - Final Improvement %:", finalImprovementPercentage + "%")
+        console.log("[v0] DYNAMIC_CALCULATION_DEBUG - Dynamic Y Axis Max:", dynamicYAxisMax + "%")
+        console.log("[v0] DYNAMIC_CALCULATION_DEBUG - Jobtrek Position:", jobtrekPosition.toFixed(2) + "%")
+
+        return [
+          null, // Index 0 (Avant Jobtrek): no line
+          jobtrekPosition, // Index 1 (Jobtrek): calculated with proper normalization
+          finalImprovementPercentage, // Index 2 (Final): exact value from statistics
+        ]
+      }
     }
-
-    const totalProgression = finalAverageScore - beforeAverageScore
-    const jobtrekProgression = jobtrekAverageScore - beforeAverageScore
-
-    // Calculate what percentage of the total progression Jobtrek represents
-    const jobtrekProgressionPercentage = totalProgression !== 0 ? (jobtrekProgression / totalProgression) * 100 : 0
-
-    const jobtrekToFinalPercentage = calculateJobtrekToFinalProgression(trajectories)
-
-    // The progression line displays percentages relative to the total progression
-    // Starting from Jobtrek at its relative position to Final at 100%
-    return [
-      null, // No data for "Avant" point - line starts from Jobtrek
-      jobtrekProgressionPercentage, // Start at the percentage that Jobtrek represents in the total progression
-      100, // End at 100% representing the complete progression to final stage
-    ]
   }
 
-  // For non-three-point view, use original logic
   return sortedYears.map((yearOrLabel, index) => {
     if (index === 0) return 0
     const currentScore = averageData[index]
@@ -203,6 +259,9 @@ export function createTrajectoryDataset(
     borderWidth: isHighlighted
       ? DATASET_STYLES.trajectory.borderWidth.highlighted
       : DATASET_STYLES.trajectory.borderWidth.normal,
+    hoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0), // White color for hover
+    hoverBorderWidth: 4, // Thicker line when hovered
+    hoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.1), // Subtle white background
     pointRadius: isHighlighted
       ? DATASET_STYLES.trajectory.pointRadius.highlighted
       : DATASET_STYLES.trajectory.pointRadius.normal,
@@ -219,6 +278,8 @@ export function createTrajectoryDataset(
       if (!chartArea) return applyPeakFinesse(PEAK_COLORS.blue, 0.4)
       return createPeakInspiredGradient(ctx, chartArea, data, isHighlighted)
     },
+    pointHoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0), // White border on hover
+    pointHoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.3), // White background on hover
     pointBorderWidth: DATASET_STYLES.trajectory.pointBorderWidth,
     tension: DATASET_STYLES.trajectory.tension,
     fill: DATASET_STYLES.trajectory.fill,
@@ -235,25 +296,54 @@ export function createAverageDataset(
   averageData: (number | null)[],
   hoveredTrajectory: string | null,
   isThreePointView?: boolean,
+  trajectories?: LifeTrajectory[],
 ) {
-  let displayData = averageData
-  if (isThreePointView === false) {
-    // In full display mode, show only first and last points for a straight line
-    const validIndices = averageData.map((value, index) => ({ value, index })).filter((item) => item.value !== null)
+  const displayData = averageData
 
-    if (validIndices.length >= 2) {
-      const firstIndex = validIndices[0].index
-      const lastIndex = validIndices[validIndices.length - 1].index
+  console.log("[v0] ===== AVERAGE LINE ANALYSIS =====")
+  console.log("[v0] View type:", isThreePointView ? "THREE_POINT_VIEW" : "SIMPLIFIED_VIEW")
+  console.log("[v0] Total trajectories:", trajectories?.length || 0)
+  console.log("[v0] Average data points:", averageData.length)
+  console.log(
+    "[v0] Average data values:",
+    averageData.map((v) => v?.toFixed(2) || "null"),
+  )
 
-      displayData = averageData.map((value, index) => {
-        if (index === firstIndex || index === lastIndex) {
-          return value
-        }
-        return null
-      })
+  if (isThreePointView === true && averageData.length === 3) {
+    const beforeJobtrek = averageData[0]
+    const preJobtrekPoint = averageData[1]
+    const finalPoint = averageData[2]
+
+    if (beforeJobtrek !== null && preJobtrekPoint !== null && finalPoint !== null) {
+      const segment1Progression = ((preJobtrekPoint - beforeJobtrek) / Math.abs(beforeJobtrek)) * 100
+      const segment2Progression = ((finalPoint - preJobtrekPoint) / Math.abs(preJobtrekPoint)) * 100
+      const totalProgression = ((finalPoint - beforeJobtrek) / Math.abs(beforeJobtrek)) * 100
+
+      console.log("[v0] THREE_POINT_ANALYSIS - Point 1 (Avant Jobtrek):", beforeJobtrek.toFixed(2))
+      console.log("[v0] THREE_POINT_ANALYSIS - Point 2 (Pré-Jobtrek):", preJobtrekPoint.toFixed(2))
+      console.log("[v0] THREE_POINT_ANALYSIS - Point 3 (Final):", finalPoint.toFixed(2))
+      console.log(
+        "[v0] THREE_POINT_ANALYSIS - Segment 1 progression (Avant → Pré-Jobtrek):",
+        segment1Progression.toFixed(2) + "%",
+      )
+      console.log(
+        "[v0] THREE_POINT_ANALYSIS - Segment 2 progression (Pré-Jobtrek → Final):",
+        segment2Progression.toFixed(2) + "%",
+      )
+      console.log("[v0] THREE_POINT_ANALYSIS - Total progression (Avant → Final):", totalProgression.toFixed(2) + "%")
     }
   }
 
+  console.log(
+    "[v0] Final display data:",
+    displayData.map((v) => v?.toFixed(2) || "null"),
+  )
+  console.log("[v0] ===== END ANALYSIS =====")
+
+  return createBaseAverageDataset(displayData, hoveredTrajectory)
+}
+
+function createBaseAverageDataset(displayData: (number | null)[], hoveredTrajectory: string | null) {
   return {
     label: "Moyenne de tous les parcours",
     data: displayData,
@@ -276,6 +366,9 @@ export function createAverageDataset(
       hoveredTrajectory === "average"
         ? DATASET_STYLES.average.borderDash.highlighted
         : DATASET_STYLES.average.borderDash.normal,
+    hoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0), // White color for hover
+    hoverBorderWidth: 5, // Extra thick line when hovered
+    hoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.2), // Subtle white background
     pointRadius:
       hoveredTrajectory === "average"
         ? DATASET_STYLES.average.pointRadius.highlighted
@@ -283,6 +376,8 @@ export function createAverageDataset(
     pointHoverRadius: DATASET_STYLES.average.pointHoverRadius,
     pointBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0),
     pointBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.2),
+    pointHoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0), // White border on hover
+    pointHoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.4), // White background on hover
     pointBorderWidth: DATASET_STYLES.average.pointBorderWidth,
     tension: DATASET_STYLES.average.tension,
     fill: DATASET_STYLES.average.fill,
@@ -293,7 +388,7 @@ export function createAverageDataset(
       hoveredTrajectory && hoveredTrajectory !== "average"
         ? DATASET_STYLES.average.opacity.dimmed
         : DATASET_STYLES.average.opacity.normal,
-    averageData: averageData,
+    averageData: displayData,
     yAxisID: "y",
     isAverage: true,
     isProgression: false,
@@ -327,6 +422,9 @@ export function createProgressionDataset(
       hoveredTrajectory === "progression"
         ? DATASET_STYLES.progression.borderDash.highlighted
         : DATASET_STYLES.progression.borderDash.normal,
+    hoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0), // White color for hover
+    hoverBorderWidth: 5, // Extra thick line when hovered
+    hoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.2), // Subtle white background
     pointRadius:
       hoveredTrajectory === "progression"
         ? DATASET_STYLES.progression.pointRadius.highlighted
@@ -334,6 +432,8 @@ export function createProgressionDataset(
     pointHoverRadius: DATASET_STYLES.progression.pointHoverRadius,
     pointBorderColor: applyPeakFinesse(PEAK_COLORS.accent, 0),
     pointBackgroundColor: applyPeakFinesse(PEAK_COLORS.accent, 0.2),
+    pointHoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0), // White border on hover
+    pointHoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.4), // White background on hover
     pointBorderWidth: DATASET_STYLES.progression.pointBorderWidth,
     tension: DATASET_STYLES.progression.tension,
     fill: DATASET_STYLES.progression.fill,
@@ -352,45 +452,6 @@ export function createProgressionDataset(
   }
 }
 
-// Helper functions from linear-chart.tsx for consistency
-function calculateBeforeToJobtrekProgression(trajectories: LifeTrajectory[]): number {
-  if (!trajectories || trajectories.length === 0) return 0
-
-  let totalImprovements = 0
-  let validTrajectories = 0
-
-  trajectories.forEach((trajectory) => {
-    const jobtrekPoint = trajectory.points.find(
-      (p) =>
-        p.event.includes("Mesure MISt Jobtrek") || p.event.includes("JobtrekSchool") || p.event.includes("Jobtrek"),
-    )
-
-    if (!jobtrekPoint) return
-
-    // Find the point immediately before the Jobtrek event
-    const jobtrekIndex = trajectory.points.findIndex((p) => p === jobtrekPoint)
-    if (jobtrekIndex <= 0) return // No previous point available
-
-    const previousPoint = trajectory.points[jobtrekIndex - 1]
-
-    // Calculate improvement from previous point to Jobtrek using same logic as calculateIndividualImprovement
-    const previousScore = previousPoint.cumulativeScore
-    const jobtrekScore = jobtrekPoint.cumulativeScore
-
-    if (previousScore === 0) {
-      const improvement = jobtrekScore < 0 ? Math.round(jobtrekScore * 100) : Math.round(jobtrekScore * 100)
-      totalImprovements += improvement
-    } else {
-      const improvement = ((jobtrekScore - previousScore) / Math.abs(previousScore)) * 100
-      totalImprovements += Math.round(improvement)
-    }
-
-    validTrajectories++
-  })
-
-  return validTrajectories > 0 ? Math.round(totalImprovements / validTrajectories) : 0
-}
-
 export function calculateJobtrekToFinalProgression(trajectories: LifeTrajectory[]): number {
   if (!trajectories || trajectories.length === 0) return 0
 
@@ -405,11 +466,54 @@ export function calculateJobtrekToFinalProgression(trajectories: LifeTrajectory[
         p.event.includes("Mesure MISt Jobtrek") || p.event.includes("JobtrekSchool") || p.event.includes("Jobtrek"),
     )
 
-    if (hasJobtrek) {
+    if (hasJobtrek && improvement !== 0) {
       totalImprovements += improvement
       validTrajectories++
     }
   })
 
   return validTrajectories > 0 ? Math.round(totalImprovements / validTrajectories) : 0
+}
+
+function findFirstJobtrekYear(trajectory: LifeTrajectory): number | null {
+  for (const point of trajectory.points) {
+    if (
+      point.event.includes("Mesure MISt Jobtrek") ||
+      point.event.includes("JobtrekSchool") ||
+      point.event.includes("Jobtrek")
+    ) {
+      return point.year
+    }
+  }
+  return null
+}
+
+function calculateJobtrekStepAverage(trajectories: LifeTrajectory[]): number | null {
+  if (!trajectories || trajectories.length === 0) return null
+
+  const jobtrekScores: number[] = []
+
+  trajectories.forEach((trajectory) => {
+    // Find the exact Jobtrek point in each trajectory
+    const jobtrekPoint = trajectory.points.find(
+      (p) => p.event.toLowerCase().includes("jobtrek") || p.categorie.toLowerCase().includes("jobtrek"),
+    )
+
+    if (jobtrekPoint) {
+      jobtrekScores.push(jobtrekPoint.cumulativeScore)
+    }
+  })
+
+  if (jobtrekScores.length === 0) return null
+
+  const average = jobtrekScores.reduce((sum, score) => sum + score, 0) / jobtrekScores.length
+
+  console.log(
+    "[v0] JOBTREK_AVERAGE_DEBUG - Found",
+    jobtrekScores.length,
+    "Jobtrek points, average:",
+    average.toFixed(2),
+  )
+
+  return average
 }

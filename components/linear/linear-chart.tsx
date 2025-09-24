@@ -1,13 +1,13 @@
 "use client"
 
-import React, { useState, useCallback } from "react"
+import React, { useState, useCallback, useEffect } from "react"
 import Chart from "chart.js/auto"
 import { Line } from "react-chartjs-2"
 import type { LifeTrajectory } from "@/lib/data-service"
-import { applyPeakFinesse } from "@/utils/linear/chart-calculations"
+import { applyPeakFinesse, calculateDistanceToLineSegment } from "@/utils/linear/chart-calculations"
 import { Plus, Minus, RotateCcw } from "lucide-react"
 import { useChartInteractions } from "@/hooks/linear/use-chart-interactions"
-import { PEAK_COLORS, CHART_LAYOUT, CHART_SCALES, LABEL_ALIGNMENT_STYLES } from "@/config/chart-styles"
+import { PEAK_COLORS, CHART_LAYOUT, getDynamicChartScales, LABEL_ALIGNMENT_STYLES } from "@/config/chart-styles"
 import {
   processTrajectories,
   calculateAverageData,
@@ -254,6 +254,11 @@ export function LinearChart({ trajectories }: LinearChartProps) {
   const [hoveredLineId, setHoveredLineId] = useState<string | null>(null)
   const [showStatistics, setShowStatistics] = useState(false)
 
+  const improvementPercentage = React.useMemo(() => {
+    if (!trajectories || trajectories.length === 0) return 100
+    return calculateJobtrekToFinalProgression(trajectories)
+  }, [trajectories])
+
   const chartData = React.useMemo(() => {
     if (!trajectories || trajectories.length === 0) {
       return { labels: [], datasets: [] }
@@ -263,17 +268,17 @@ export function LinearChart({ trajectories }: LinearChartProps) {
 
     const datasets = processedTrajectories.map((trajectory) => {
       const isHighlighted = hoveredLineId === trajectory.id
-      return createTrajectoryDataset(trajectory, sortedYears, isThreePointView, "highlighted", isHighlighted)
+      return createTrajectoryDataset(trajectory, sortedYears, isThreePointView, hoveredLineId, isHighlighted)
     })
 
     if (trajectories.length > 1) {
       const averageData = calculateAverageData(sortedYears, processedTrajectories, trajectories, isThreePointView)
       const progressionData = calculateProgressionData(sortedYears, averageData, trajectories)
 
-      datasets.push(createAverageDataset(averageData, "highlighted", isThreePointView))
+      datasets.push(createAverageDataset(averageData, hoveredLineId, isThreePointView, trajectories))
 
       if (isThreePointView) {
-        datasets.push(createProgressionDataset(progressionData, "highlighted", averageData))
+        datasets.push(createProgressionDataset(progressionData, hoveredLineId, averageData))
       }
     }
 
@@ -299,6 +304,10 @@ export function LinearChart({ trajectories }: LinearChartProps) {
     determineTrajectoryType,
   } = useChartInteractions(trajectories, chartData)
 
+  useEffect(() => {
+    setHoveredLineId(hoveredTrajectory)
+  }, [hoveredTrajectory])
+
   const handleOpenStatistics = useCallback(() => {
     setShowStatistics(true)
   }, [])
@@ -308,53 +317,19 @@ export function LinearChart({ trajectories }: LinearChartProps) {
   }, [])
 
   const enhancedHandleHover = useCallback(
-    (event: any, elements: any[], chart: any) => {
-      if (!chart || !event.native) {
-        handleHover(event, elements, chart)
-        setHoveredLineId(null)
-        return
-      }
+    (event: any, activeElements: any[], chart: any) => {
+      console.log(`[v0] HOVER_ENHANCED - Event triggered, activeElements:`, activeElements?.length || 0)
 
-      const rect = chart.canvas.getBoundingClientRect()
-      const mouseX = (event.native as MouseEvent).clientX - rect.left
-      const mouseY = (event.native as MouseEvent).clientY - rect.top
+      // Call the main hover handler from the hook
+      handleHover(event, activeElements, chart)
 
-      console.log(`[v0] HOVER_ENHANCED - View: ${isThreePointView ? "SIMPLIFIED" : "COMPLETE"}`)
-      console.log(`[v0] HOVER_ENHANCED - Mouse position: (${mouseX.toFixed(1)}, ${mouseY.toFixed(1)})`)
-      console.log(`[v0] HOVER_ENHANCED - Total datasets: ${chart.data.datasets.length}`)
-
-      const trajectoryDatasets = chart.data.datasets.filter(
-        (d: any) => !d.isAverage && !d.isProgression && d.trajectoryId,
-      )
-      console.log(`[v0] HOVER_ENHANCED - Trajectory datasets: ${trajectoryDatasets.length}`)
-
-      const closestTrajectoryId = findClosestTrajectoryToMouse(chart, mouseX, mouseY, 25)
-
-      console.log(`[v0] HOVER_ENHANCED - Closest trajectory found: ${closestTrajectoryId || "NONE"}`)
-      console.log(`[v0] HOVER_ENHANCED - Using maxDistance: 25`)
-
-      if (closestTrajectoryId) {
-        setHoveredLineId(closestTrajectoryId)
-
-        const trajectory = trajectories.find((t) => t.id === closestTrajectoryId)
-        if (trajectory) {
-          console.log(`[v0] HOVER_ENHANCED - Found trajectory: ${trajectory.userCode}`)
-          const syntheticElements = [
-            {
-              datasetIndex: chart.data.datasets.findIndex((d: any) => d.trajectoryId === closestTrajectoryId),
-              index: 0,
-            },
-          ]
-          console.log(`[v0] HOVER_ENHANCED - Dataset index: ${syntheticElements[0].datasetIndex}`)
-          handleHover(event, syntheticElements, chart)
-        }
-      } else {
-        console.log(`[v0] HOVER_ENHANCED - No trajectory found within distance`)
-        setHoveredLineId(null)
-        handleHover(event, [], chart)
+      // Force chart update to apply hover styles
+      if (chart && activeElements?.length > 0) {
+        console.log(`[v0] HOVER_ENHANCED - Forcing chart update for hover styles`)
+        chart.update("none")
       }
     },
-    [handleHover, trajectories, isThreePointView],
+    [handleHover],
   )
 
   const enhancedHandleClick = useCallback(
@@ -395,14 +370,21 @@ export function LinearChart({ trajectories }: LinearChartProps) {
     [handleClick, handleOpenStatistics],
   )
 
-  const options: any = React.useMemo(
-    () => ({
+  const options: any = React.useMemo(() => {
+    const dynamicScales = getDynamicChartScales(improvementPercentage)
+
+    console.log("[v0] DYNAMIC_SCALES_DEBUG - Improvement percentage:", improvementPercentage + "%")
+    console.log("[v0] DYNAMIC_SCALES_DEBUG - Dynamic Y1 max:", dynamicScales.y1.max + "%")
+    console.log("[v0] DYNAMIC_SCALES_DEBUG - Dynamic Y1 step size:", dynamicScales.y1.ticks.stepSize)
+
+    return {
       responsive: true,
       maintainAspectRatio: false,
       layout: CHART_LAYOUT,
       interaction: {
         mode: "nearest",
         intersect: false,
+        axis: "xy",
       },
       plugins: {
         customLabelAlignment: {
@@ -421,22 +403,22 @@ export function LinearChart({ trajectories }: LinearChartProps) {
           title: {
             display: true,
             text: isThreePointView ? "Périodes" : "Années",
-            color: CHART_SCALES.x.title.color,
-            font: CHART_SCALES.x.title.font,
-            padding: CHART_SCALES.x.title.padding,
+            color: dynamicScales.x.title.color,
+            font: dynamicScales.x.title.font,
+            padding: dynamicScales.x.title.padding,
           },
           ticks: {
-            color: CHART_SCALES.x.ticks.color,
-            maxRotation: CHART_SCALES.x.ticks.maxRotation,
+            color: dynamicScales.x.ticks.color,
+            maxRotation: dynamicScales.x.ticks.maxRotation,
             display: !isThreePointView,
             callback: function (value, index, ticks) {
               return this.getLabelForValue(value as number)
             },
           },
           grid: {
-            color: CHART_SCALES.x.grid.color,
+            color: dynamicScales.x.grid.color,
           },
-          offset: CHART_SCALES.x.offset,
+          offset: dynamicScales.x.offset,
         },
         y: {
           type: "linear",
@@ -445,14 +427,14 @@ export function LinearChart({ trajectories }: LinearChartProps) {
           title: {
             display: true,
             text: "Progression des parcours",
-            color: CHART_SCALES.y.title.color,
-            font: CHART_SCALES.y.title.font,
+            color: dynamicScales.y.title.color,
+            font: dynamicScales.y.title.font,
           },
           ticks: {
             display: false,
           },
           grid: {
-            color: CHART_SCALES.y.grid.color,
+            color: dynamicScales.y.grid.color,
           },
           afterDataLimits: (scale) => {
             const chart = scale.chart as any
@@ -480,34 +462,34 @@ export function LinearChart({ trajectories }: LinearChartProps) {
             display: true,
             text: "Progression (%)",
             color: applyPeakFinesse(PEAK_COLORS.accent, 0),
-            font: CHART_SCALES.y1.title.font,
+            font: dynamicScales.y1.title.font,
           },
-          min: CHART_SCALES.y1.min,
-          max: CHART_SCALES.y1.max,
+          min: dynamicScales.y1.min,
+          max: dynamicScales.y1.max, // Use dynamic max instead of hardcoded value
           ticks: {
             color: applyPeakFinesse(PEAK_COLORS.accent, 0.7),
-            stepSize: CHART_SCALES.y1.ticks.stepSize,
+            stepSize: dynamicScales.y1.ticks.stepSize, // Use dynamic step size
             callback: (value) => value + "%",
           },
-          grid: CHART_SCALES.y1.grid,
+          grid: dynamicScales.y1.grid,
         },
       },
       onHover: enhancedHandleHover,
       onClick: enhancedHandleClick,
       isThreePointView: isThreePointView,
-    }),
-    [
-      chartData,
-      hoveredTrajectory,
-      isHoveringLine,
-      isThreePointView,
-      trajectories,
-      zoomLevel,
-      isPanMode,
-      enhancedHandleHover,
-      enhancedHandleClick,
-    ],
-  )
+    }
+  }, [
+    chartData,
+    hoveredTrajectory,
+    isHoveringLine,
+    isThreePointView,
+    trajectories,
+    zoomLevel,
+    isPanMode,
+    enhancedHandleHover,
+    enhancedHandleClick,
+    improvementPercentage, // Add improvementPercentage as dependency
+  ])
 
   const statistics = showStatistics ? calculateJobtrekStatistics(trajectories) : null
 
@@ -598,88 +580,4 @@ export function LinearChart({ trajectories }: LinearChartProps) {
       {showStatistics && <StatisticsModal statistics={statistics} onClose={handleCloseStatistics} />}
     </div>
   )
-}
-
-function findClosestTrajectoryToMouse(chart: any, mouseX: number, mouseY: number, maxDistance = 20): string | null {
-  let closestTrajectoryId: string | null = null
-  let minDistance = maxDistance
-
-  console.log(`[v0] FIND_CLOSEST_LOCAL - Starting search with maxDistance: ${maxDistance}`)
-  console.log(`[v0] FIND_CLOSEST_LOCAL - Mouse at: (${mouseX.toFixed(1)}, ${mouseY.toFixed(1)})`)
-
-  chart.data.datasets.forEach((dataset: any, datasetIndex) => {
-    if (dataset.isAverage || dataset.isProgression || !dataset.trajectoryId) {
-      console.log(
-        `[v0] FIND_CLOSEST_LOCAL - Skipping dataset ${datasetIndex}: ${dataset.isAverage ? "average" : dataset.isProgression ? "progression" : "no trajectoryId"}`,
-      )
-      return
-    }
-
-    const meta = chart.getDatasetMeta(datasetIndex)
-    if (!meta.visible) {
-      console.log(`[v0] FIND_CLOSEST_LOCAL - Skipping invisible dataset ${datasetIndex}`)
-      return
-    }
-
-    console.log(
-      `[v0] FIND_CLOSEST_LOCAL - Checking dataset ${datasetIndex} (${dataset.trajectoryId}) with ${meta.data.length} points`,
-    )
-
-    for (let i = 0; i < meta.data.length - 1; i++) {
-      const point1 = meta.data[i] as any
-      const point2 = meta.data[i + 1] as any
-
-      if (!point1 || !point2) continue
-
-      const distance = calculateDistanceToLineSegment(mouseX, mouseY, point1.x, point1.y, point2.x, point2.y)
-
-      if (distance < 50) {
-        // Only log close segments to avoid spam
-        console.log(
-          `[v0] FIND_CLOSEST_LOCAL - Segment ${i}-${i + 1}: distance=${distance.toFixed(2)}, points=(${point1.x.toFixed(1)},${point1.y.toFixed(1)}) to (${point2.x.toFixed(1)},${point2.y.toFixed(1)})`,
-        )
-      }
-
-      if (distance < minDistance) {
-        minDistance = distance
-        closestTrajectoryId = dataset.trajectoryId
-        console.log(`[v0] FIND_CLOSEST_LOCAL - NEW CLOSEST: ${closestTrajectoryId} at distance ${distance.toFixed(2)}`)
-      }
-    }
-  })
-
-  console.log(
-    `[v0] FIND_CLOSEST_LOCAL - Final result: ${closestTrajectoryId || "NONE"} at distance ${minDistance.toFixed(2)}`,
-  )
-  return closestTrajectoryId
-}
-
-function calculateDistanceToLineSegment(
-  mouseX: number,
-  mouseY: number,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-): number {
-  const A = mouseX - x1
-  const B = mouseY - y1
-  const C = x2 - x1
-  const D = y2 - y1
-
-  const dot = A * C + B * D
-  const lenSq = C * C + D * D
-
-  if (lenSq === 0) return Math.sqrt(A * A + B * B)
-
-  let param = dot / lenSq
-  param = Math.max(0, Math.min(1, param))
-
-  const xx = x1 + param * C
-  const yy = y1 + param * D
-
-  const dx = mouseX - xx
-  const dy = mouseY - yy
-
-  return Math.sqrt(dx * dx + dy * dy)
 }

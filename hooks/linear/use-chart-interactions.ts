@@ -8,35 +8,33 @@ import { useLifeTrajectoryStore } from "@/lib/store"
 import { calculateIndividualImprovement } from "@/lib/statistics-calculator"
 import { calculateJobtrekToFinalProgression } from "@/utils/linear/chart-data-transform"
 
-interface TooltipState {
-  visible: boolean
-  position: { x: number; y: number }
-  trajectory: LifeTrajectory | null
-}
-
-interface AverageTooltipState {
-  visible: boolean
-  position: { x: number; y: number }
-  averageData: (number | null)[]
-  isProgression: boolean
-  progressionPercentages?: { beforeToJobtrek: number; jobtrekToFinal: number }
-}
+type TooltipState =
+  | {
+      visible: false
+      position: { x: number; y: number }
+    }
+  | {
+      visible: true
+      position: { x: number; y: number }
+      type: "trajectory"
+      trajectory: LifeTrajectory
+    }
+  | {
+      visible: true
+      position: { x: number; y: number }
+      type: "average"
+      averageData: (number | null)[]
+      isProgression: boolean
+      progressionPercentages?: { beforeToJobtrek: number; jobtrekToFinal: number }
+    }
 
 export function useChartInteractions(trajectories: LifeTrajectory[], chartData: any) {
   const chartRef = useRef<ChartJS<"line"> | null>(null)
-  const [hoveredTrajectory, setHoveredTrajectory] = useState<string | null>(null)
+  const [hoveredTrajectoryId, setHoveredTrajectoryId] = useState<string | null>(null)
   const [isHoveringLine, setIsHoveringLine] = useState(false)
-  const [currentHoveredTrajectoryId, setCurrentHoveredTrajectoryId] = useState<string | null>(null)
   const [tooltipState, setTooltipState] = useState<TooltipState>({
     visible: false,
     position: { x: 0, y: 0 },
-    trajectory: null,
-  })
-  const [averageTooltipState, setAverageTooltipState] = useState<AverageTooltipState>({
-    visible: false,
-    position: { x: 0, y: 0 },
-    averageData: [],
-    isProgression: false,
   })
   const [zoomLevel, setZoomLevel] = useState(1)
   const [isPanMode, setIsPanMode] = useState(false)
@@ -198,20 +196,32 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
       }
     })
 
-    // Same priority logic as modal: MISt takes precedence over School
     if (hasMist) {
       return "Mesure MISt Jobtrek"
     } else if (hasSchool) {
       return "JobtrekSchool"
     }
 
-    // Fallback to original typeMesure if no specific events found
     return trajectory.typeMesure || "JobtrekSchool"
   }, [])
+
+  const updateChartHighlight = useCallback((chart: ChartJS<"line">, activeElements: any[] = []) => {
+    chart.setActiveElements(activeElements)
+    chart.update("none")
+  }, [])
+
+  const lastHoverTime = useRef(0)
+  const HOVER_THROTTLE_MS = 16 // ~60fps
 
   const handleHover = useCallback(
     (event: any, activeElements: any, chart: ChartJS<"line">) => {
       if (!chart || !event.native) return
+
+      const now = Date.now()
+      if (now - lastHoverTime.current < HOVER_THROTTLE_MS) {
+        return
+      }
+      lastHoverTime.current = now
 
       if (isPanMode) {
         return
@@ -224,16 +234,11 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
       const clientY = (event.native as MouseEvent).clientY
 
       const isThreePointView = chart.config?.options?.isThreePointView || false
-      console.log(`[v0] HOVER_HOOK - View: ${isThreePointView ? "SIMPLIFIED" : "COMPLETE"}`)
-      console.log(`[v0] HOVER_HOOK - Mouse position: (${mouseX.toFixed(1)}, ${mouseY.toFixed(1)})`)
-      console.log(`[v0] HOVER_HOOK - Using maxDistance: 30`)
 
-      const closestTrajectoryId = findClosestTrajectoryToMouse(chart, mouseX, mouseY, 30)
-
-      console.log(`[v0] HOVER_HOOK - Closest trajectory from utils: ${closestTrajectoryId || "NONE"}`)
+      const maxDistance = 25
+      const closestTrajectoryId = findClosestTrajectoryToMouse(chart, mouseX, mouseY, maxDistance)
 
       if (closestTrajectoryId === "progression") {
-        console.log(`[v0] HOVER_HOOK - Handling progression line`)
         const progressionDataset = chartData.datasets.find(
           (dataset: any) => dataset.trajectoryId === "progression",
         ) as any
@@ -243,59 +248,49 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
         )
 
         if (progressionDatasetIndex !== -1) {
-          chart.setActiveElements([{ datasetIndex: progressionDatasetIndex, index: 0 }])
-          chart.update("none")
+          updateChartHighlight(chart, [{ datasetIndex: progressionDatasetIndex, index: 0 }])
         }
 
         const jobtrekToFinalPercentage = calculateJobtrekToFinalProgression(trajectories)
 
-        const tooltipData = {
+        setHoveredTrajectoryId("progression")
+        setTooltipState({
           visible: true,
           position: { x: clientX, y: clientY },
+          type: "average",
           averageData: progressionDataset?.progressionData || [],
           isProgression: true,
           progressionPercentages: {
             beforeToJobtrek: 0,
             jobtrekToFinal: jobtrekToFinalPercentage,
           },
-        }
-
-        setCurrentHoveredTrajectoryId("progression")
-        setTooltipState({ visible: false, position: { x: 0, y: 0 }, trajectory: null })
-        setAverageTooltipState(tooltipData)
-        setHoveredTrajectory("progression")
+        })
         setIsHoveringLine(true)
         if (event.native?.target) {
           ;(event.native.target as HTMLElement).style.cursor = "pointer"
         }
       } else if (closestTrajectoryId === "average") {
-        console.log(`[v0] HOVER_HOOK - Handling average line`)
         const averageDataset = chartData.datasets.find((dataset: any) => dataset.trajectoryId === "average") as any
 
         const averageDatasetIndex = chartData.datasets.findIndex((dataset: any) => dataset.trajectoryId === "average")
 
         if (averageDatasetIndex !== -1) {
-          chart.setActiveElements([{ datasetIndex: averageDatasetIndex, index: 0 }])
-          chart.update("none")
+          updateChartHighlight(chart, [{ datasetIndex: averageDatasetIndex, index: 0 }])
         }
 
-        const tooltipData = {
+        setHoveredTrajectoryId("average")
+        setTooltipState({
           visible: true,
           position: { x: clientX, y: clientY },
+          type: "average",
           averageData: averageDataset?.averageData || [],
           isProgression: false,
-        }
-
-        setCurrentHoveredTrajectoryId("average")
-        setTooltipState({ visible: false, position: { x: 0, y: 0 }, trajectory: null })
-        setAverageTooltipState(tooltipData)
-        setHoveredTrajectory("average")
+        })
         setIsHoveringLine(true)
         if (event.native?.target) {
           ;(event.native.target as HTMLElement).style.cursor = "pointer"
         }
       } else if (closestTrajectoryId) {
-        console.log(`[v0] HOVER_HOOK - Handling individual trajectory: ${closestTrajectoryId}`)
         const trajectoryData = trajectories.find((t) => t.id === closestTrajectoryId)
 
         const trajectoryDatasetIndex = chartData.datasets.findIndex(
@@ -303,8 +298,7 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
         )
 
         if (trajectoryDatasetIndex !== -1) {
-          chart.setActiveElements([{ datasetIndex: trajectoryDatasetIndex, index: 0 }])
-          chart.update("none")
+          updateChartHighlight(chart, [{ datasetIndex: trajectoryDatasetIndex, index: 0 }])
         }
 
         if (trajectoryData) {
@@ -320,49 +314,43 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
             startYear,
           }
 
-          setCurrentHoveredTrajectoryId(closestTrajectoryId)
+          setHoveredTrajectoryId(closestTrajectoryId)
           setTooltipState({
             visible: true,
             position: { x: clientX, y: clientY },
+            type: "trajectory",
             trajectory: enhancedTrajectoryData,
           })
         } else {
-          setCurrentHoveredTrajectoryId(closestTrajectoryId)
+          setHoveredTrajectoryId(closestTrajectoryId)
           setTooltipState({
-            visible: true,
+            visible: false,
             position: { x: clientX, y: clientY },
-            trajectory: trajectoryData || null,
           })
         }
 
-        setAverageTooltipState({ visible: false, position: { x: 0, y: 0 }, averageData: [], isProgression: false })
-        setHoveredTrajectory(closestTrajectoryId)
         setIsHoveringLine(true)
         if (event.native?.target) {
           ;(event.native.target as HTMLElement).style.cursor = "pointer"
         }
       } else {
-        console.log(`[v0] HOVER_HOOK - No trajectory found, clearing hover state`)
-        chart.setActiveElements([])
-        chart.update("none")
+        updateChartHighlight(chart, [])
 
-        setCurrentHoveredTrajectoryId(null)
-        setTooltipState({ visible: false, position: { x: 0, y: 0 }, trajectory: null })
-        setAverageTooltipState({ visible: false, position: { x: 0, y: 0 }, averageData: [], isProgression: false })
-        setHoveredTrajectory(null)
+        setHoveredTrajectoryId(null)
+        setTooltipState({ visible: false, position: { x: 0, y: 0 } })
         setIsHoveringLine(false)
         if (event.native?.target) {
           ;(event.native.target as HTMLElement).style.cursor = "default"
         }
       }
     },
-    [isPanMode, chartData, trajectories, determineTrajectoryType],
+    [isPanMode, chartData, trajectories, determineTrajectoryType, updateChartHighlight],
   )
 
   const handleClick = useCallback(
     (event: any, activeElements: any) => {
-      if (currentHoveredTrajectoryId) {
-        const originalTrajectory = trajectories.find((t) => t.id === currentHoveredTrajectoryId)
+      if (hoveredTrajectoryId) {
+        const originalTrajectory = trajectories.find((t) => t.id === hoveredTrajectoryId)
 
         if (originalTrajectory) {
           setSelectedPerson(originalTrajectory)
@@ -383,7 +371,7 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
         }
       }
     },
-    [currentHoveredTrajectoryId, trajectories, chartData, setSelectedPerson],
+    [hoveredTrajectoryId, trajectories, chartData, setSelectedPerson],
   )
 
   const handleZoomIn = () => {
@@ -399,7 +387,6 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
       if (typeof chartRef.current.resetZoom === "function") {
         chartRef.current.resetZoom()
       } else {
-        // Fallback: manually reset zoom by updating chart options
         const chart = chartRef.current
         if (chart.options.scales?.y) {
           delete chart.options.scales.y.min
@@ -413,10 +400,24 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
 
   return {
     chartRef,
-    hoveredTrajectory,
+    hoveredTrajectory: hoveredTrajectoryId,
     isHoveringLine,
     tooltipState,
-    averageTooltipState,
+    averageTooltipState:
+      tooltipState.visible && tooltipState.type === "average"
+        ? {
+            visible: true,
+            position: tooltipState.position,
+            averageData: tooltipState.averageData,
+            isProgression: tooltipState.isProgression,
+            progressionPercentages: tooltipState.progressionPercentages,
+          }
+        : {
+            visible: false,
+            position: { x: 0, y: 0 },
+            averageData: [],
+            isProgression: false,
+          },
     zoomLevel,
     isPanMode,
     handleHover,

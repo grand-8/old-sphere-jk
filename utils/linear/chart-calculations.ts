@@ -48,60 +48,118 @@ export function calculateDistanceToLineSegment(
   return Math.sqrt(dx * dx + dy * dy)
 }
 
+/**
+ * Calculate the centroid (center of mass) of a trajectory
+ * Used for trajectory prioritization when distances are similar
+ */
+function calculateTrajectoryCentroid(chart: ChartJS<"line">, datasetIndex: number): { x: number; y: number } | null {
+  const meta = chart.getDatasetMeta(datasetIndex)
+  if (!meta.data || meta.data.length === 0) return null
+
+  let sumX = 0
+  let sumY = 0
+  let count = 0
+
+  meta.data.forEach((point) => {
+    if (point && typeof point.x === "number" && typeof point.y === "number") {
+      sumX += point.x
+      sumY += point.y
+      count++
+    }
+  })
+
+  if (count === 0) return null
+
+  return {
+    x: sumX / count,
+    y: sumY / count,
+  }
+}
+
+/**
+ * Calculate distance between two points
+ */
+function calculatePointDistance(x1: number, y1: number, x2: number, y2: number): number {
+  const dx = x2 - x1
+  const dy = y2 - y1
+  return Math.sqrt(dx * dx + dy * dy)
+}
+
 export function findClosestTrajectoryToMouse(
   chart: ChartJS<"line">,
   mouseX: number,
   mouseY: number,
-  maxDistance = 15,
+  maxDistance = 25,
 ): string | null {
-  let closestTrajectoryId: string | null = null
-  let minDistance = maxDistance
-
   const isThreePointView = (chart.config?.options as any)?.isThreePointView || false
-  console.log(`[v0] FIND_CLOSEST_UTILS - View: ${isThreePointView ? "SIMPLIFIED" : "COMPLETE"}`)
-  console.log(`[v0] FIND_CLOSEST_UTILS - Starting search with maxDistance: ${maxDistance}`)
-  console.log(`[v0] FIND_CLOSEST_UTILS - Mouse at: (${mouseX.toFixed(1)}, ${mouseY.toFixed(1)})`)
+
+  const adaptiveMaxDistance = isThreePointView ? maxDistance : 15
+
+  interface TrajectoryCandidate {
+    trajectoryId: string
+    minSegmentDistance: number
+    centroidDistance: number
+    datasetIndex: number
+  }
+
+  const candidates: TrajectoryCandidate[] = []
 
   chart.data.datasets.forEach((dataset: any, datasetIndex) => {
     const meta = chart.getDatasetMeta(datasetIndex)
-    if (!meta.visible) {
-      console.log(`[v0] FIND_CLOSEST_UTILS - Skipping invisible dataset ${datasetIndex}`)
-      return
-    }
+    if (!meta.visible) return
 
-    console.log(
-      `[v0] FIND_CLOSEST_UTILS - Checking dataset ${datasetIndex} (${dataset.trajectoryId || "no ID"}) with ${meta.data.length} points`,
-    )
+    const hasTrajectoryId = dataset.trajectoryId && dataset.trajectoryId !== "undefined"
+    if (!hasTrajectoryId) return
 
+    let minSegmentDistance = Number.POSITIVE_INFINITY
+
+    // Find minimum distance to any segment of this trajectory
     for (let i = 0; i < meta.data.length - 1; i++) {
       const point1 = meta.data[i]
       const point2 = meta.data[i + 1]
 
       if (!point1 || !point2) continue
 
-      const distance = calculateDistanceToLineSegment(mouseX, mouseY, point1.x, point1.y, point2.x, point2.y)
+      const segmentDistance = calculateDistanceToLineSegment(mouseX, mouseY, point1.x, point1.y, point2.x, point2.y)
 
-      if (distance < 50) {
-        // Only log close segments to avoid spam
-        console.log(
-          `[v0] FIND_CLOSEST_UTILS - Segment ${i}-${i + 1}: distance=${distance.toFixed(2)}, points=(${point1.x.toFixed(1)},${point1.y.toFixed(1)}) to (${point2.x.toFixed(1)},${point2.y.toFixed(1)})`,
-        )
+      if (segmentDistance < minSegmentDistance) {
+        minSegmentDistance = segmentDistance
       }
+    }
 
-      if (distance < minDistance) {
-        minDistance = distance
-        closestTrajectoryId = dataset.trajectoryId
-        console.log(
-          `[v0] FIND_CLOSEST_UTILS - NEW CLOSEST: ${closestTrajectoryId || "NONE"} at distance ${distance.toFixed(2)}`,
-        )
-      }
+    // Only consider trajectories within the adaptive distance threshold
+    if (minSegmentDistance <= adaptiveMaxDistance) {
+      const centroid = calculateTrajectoryCentroid(chart, datasetIndex)
+      const centroidDistance = centroid
+        ? calculatePointDistance(mouseX, mouseY, centroid.x, centroid.y)
+        : Number.POSITIVE_INFINITY
+
+      candidates.push({
+        trajectoryId: dataset.trajectoryId,
+        minSegmentDistance,
+        centroidDistance,
+        datasetIndex,
+      })
     }
   })
 
-  console.log(
-    `[v0] FIND_CLOSEST_UTILS - Final result: ${closestTrajectoryId || "NONE"} at distance ${minDistance.toFixed(2)}`,
-  )
-  return closestTrajectoryId
+  if (candidates.length === 0) return null
+
+  candidates.sort((a, b) => {
+    // Primary criterion: minimum segment distance
+    const segmentDiff = a.minSegmentDistance - b.minSegmentDistance
+
+    // If segment distances are very close (within 2 pixels), use centroid distance as tiebreaker
+    if (Math.abs(segmentDiff) < 2) {
+      return a.centroidDistance - b.centroidDistance
+    }
+
+    return segmentDiff
+  })
+
+  const winner = candidates[0]
+
+  return winner.trajectoryId
 }
 
 export function createActiveElementsFromTrajectoryId(
@@ -111,11 +169,9 @@ export function createActiveElementsFromTrajectoryId(
 ): any[] {
   if (!trajectoryId) return []
 
-  // Find the dataset index for this trajectory
   const datasetIndex = chart.data.datasets.findIndex((dataset: any) => dataset.trajectoryId === trajectoryId)
   if (datasetIndex === -1) return []
 
-  // Find the closest data point index based on mouse X position
   const meta = chart.getDatasetMeta(datasetIndex)
   if (!meta.data || meta.data.length === 0) return []
 
@@ -130,7 +186,6 @@ export function createActiveElementsFromTrajectoryId(
     }
   })
 
-  // Create a fake active element that Chart.js tooltip system expects
   return [
     {
       datasetIndex,
