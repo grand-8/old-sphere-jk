@@ -153,28 +153,64 @@ export function calculateProgressionData(
         segment2Progression.toFixed(2) + "%",
       )
       console.log("[v0] THREE_POINT_ANALYSIS - Total progression (Avant → Final):", totalProgression.toFixed(2) + "%")
+
+      console.log("[v0] PROGRESSION_LINE_DEBUG - Calculating progression line values")
     }
   }
 
   return sortedYears.map((yearOrLabel, index) => {
     if (sortedYears.length === 3) {
       // In three-point view, progression line starts at index 1 (Pré-Jobtrek)
-      if (index === 0) return null // No line before Pré-Jobtrek
+      if (index === 0) {
+        console.log("[v0] PROGRESSION_LINE_DEBUG - Index 0 (Avant Jobtrek): null (no line)")
+        return null // No line before Pré-Jobtrek
+      }
       if (index === 1) {
-        // Calculate progression from Avant Jobtrek to Pré-Jobtrek
-        const currentScore = averageData[index] // Pré-Jobtrek score
-        const referenceScore = averageData[0] // Avant Jobtrek score (reference)
-        if (currentScore === null || referenceScore === null || referenceScore === 0) return 0
-        const progression = ((currentScore - referenceScore) / Math.abs(referenceScore)) * 100
-        return Math.max(0, Math.min(100, progression))
+        // Use the average score at Pré-Jobtrek as the baseline (0% progression)
+        const currentScore = averageData[index] // Pré-Jobtrek score (1.27)
+        const referenceScore = averageData[0] // Avant Jobtrek score (0.30)
+
+        if (currentScore === null || referenceScore === null || referenceScore === 0) {
+          console.log("[v0] PROGRESSION_LINE_DEBUG - Index 1 (Pré-Jobtrek): 0% (invalid scores)")
+          return 0
+        }
+
+        // Calculate the progression percentage from Avant to Pré-Jobtrek
+        const progressionPercent = ((currentScore - referenceScore) / Math.abs(referenceScore)) * 100
+
+        // But position the line at a percentage that represents the middle position
+        // relative to the total progression range
+        const finalScore = averageData[2]
+        if (finalScore !== null) {
+          const totalProgression = ((finalScore - referenceScore) / Math.abs(referenceScore)) * 100
+          // Position Pré-Jobtrek at a percentage that reflects its relative position
+          const relativePosition = (progressionPercent / totalProgression) * 100
+          console.log(
+            "[v0] PROGRESSION_LINE_DEBUG - Index 1 (Pré-Jobtrek):",
+            relativePosition.toFixed(2) + "% (relative position)",
+          )
+          return Math.max(0, Math.min(100, relativePosition))
+        }
+
+        console.log("[v0] PROGRESSION_LINE_DEBUG - Index 1 (Pré-Jobtrek): 0% (fallback)")
+        return 0
       }
 
       // Calculate progression from Pré-Jobtrek to Final
-      const currentScore = averageData[index]
-      const preJobtrekScore = averageData[1] // Pré-Jobtrek point
-      if (currentScore === null || preJobtrekScore === null || preJobtrekScore === 0) return null
-      const progression = ((currentScore - preJobtrekScore) / Math.abs(preJobtrekScore)) * 100
-      return Math.max(0, Math.min(100, progression))
+      const currentScore = averageData[index] // Final score
+      const preJobtrekScore = averageData[1] // Pré-Jobtrek score
+      const referenceScore = averageData[0] // Avant Jobtrek score (for total progression calculation)
+
+      if (currentScore === null || preJobtrekScore === null || referenceScore === null || referenceScore === 0) {
+        console.log("[v0] PROGRESSION_LINE_DEBUG - Index 2 (Final): null (invalid scores)")
+        return null
+      }
+
+      // Calculate total progression from Avant to Final
+      const totalProgression = ((currentScore - referenceScore) / Math.abs(referenceScore)) * 100
+      // Position final point at 100% of the progression scale
+      console.log("[v0] PROGRESSION_LINE_DEBUG - Index 2 (Final): 100% (end of progression)")
+      return 100
     }
 
     // Original logic for non-three-point view
