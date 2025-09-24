@@ -144,7 +144,7 @@ export function InfoModal({ onMouseDown, onMouseMove }: InfoModalProps) {
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onClick={() => setIsOpen(true)}
-        className="w-10 h-10 bg-black/50 backdrop-blur-sm text-white rounded-full hover:bg-black/60 transition-colors shadow-lg border border-white/20 flex items-center justify-center"
+        className="w-10 h-10 bg-black/50 backdrop-blur-sm text-white rounded-full hover:bg-black/60 hover:border-white/40 transition-colors shadow-lg border border-white/20 flex items-center justify-center"
         aria-label="Informations sur les trajectoires de vie"
         data-ui-element="true"
       >

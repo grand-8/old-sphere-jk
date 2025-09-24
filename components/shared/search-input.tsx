@@ -65,7 +65,7 @@ export function SearchInput({ placeholder = "Rechercher...", onMouseDown, onMous
             focus:bg-black/60
             transition-all duration-200
             hover:bg-black/60
-            hover:border-white/30
+            hover:border-white/40
           "
         />
         <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none z-10">

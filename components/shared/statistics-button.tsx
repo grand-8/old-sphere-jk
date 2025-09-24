@@ -15,7 +15,7 @@ export function StatisticsButton({ onClick, onMouseDown, onMouseMove }: Statisti
       onClick={onClick}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
-      className="w-10 h-10 bg-black/50 backdrop-blur-sm text-white rounded-full hover:bg-black/60 transition-colors shadow-lg border border-white/20 flex items-center justify-center"
+      className="w-10 h-10 bg-black/50 backdrop-blur-sm text-white rounded-full hover:bg-black/60 hover:border-white/40 transition-colors shadow-lg border border-white/20 flex items-center justify-center"
       aria-label="Voir les statistiques"
       data-ui-element="true"
     >
