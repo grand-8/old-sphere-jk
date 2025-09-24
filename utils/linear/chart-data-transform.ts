@@ -485,3 +485,7 @@ function calculateJobtrekStepAverage(trajectories: LifeTrajectory[]): number | n
 
   return average
 }
+
+export function calculateJobtrekToFinalProgression(trajectories: LifeTrajectory[]): number {
+  return calculateImprovementPercentage(trajectories)
+}

@@ -5,8 +5,7 @@ import type { ChartJS } from "chart.js"
 import type { LifeTrajectory } from "@/lib/data-service"
 import { findClosestTrajectoryToMouse } from "@/utils/linear/chart-calculations"
 import { useLifeTrajectoryStore } from "@/lib/store"
-import { calculateIndividualImprovement } from "@/lib/statistics-calculator"
-import { calculateJobtrekToFinalProgression } from "@/utils/linear/chart-data-transform"
+import { calculateIndividualImprovement, calculateImprovementPercentage } from "@/lib/statistics-calculator"
 
 type TooltipState =
   | {
@@ -251,7 +250,7 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
           updateChartHighlight(chart, [{ datasetIndex: progressionDatasetIndex, index: 0 }])
         }
 
-        const jobtrekToFinalPercentage = calculateJobtrekToFinalProgression(trajectories)
+        const jobtrekToFinalPercentage = calculateImprovementPercentage(trajectories)
 
         setHoveredTrajectoryId("progression")
         setTooltipState({

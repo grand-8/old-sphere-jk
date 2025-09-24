@@ -15,10 +15,9 @@ import {
   createTrajectoryDataset,
   createAverageDataset,
   createProgressionDataset,
-  calculateJobtrekToFinalProgression,
 } from "@/utils/linear/chart-data-transform"
 import { StatisticsModal } from "@/components/statistics-modal"
-import { calculateJobtrekStatistics } from "@/lib/statistics-calculator"
+import { calculateJobtrekStatistics, calculateImprovementPercentage } from "@/lib/statistics-calculator"
 
 const customLabelAlignmentPlugin = {
   id: "customLabelAlignment",
@@ -158,7 +157,7 @@ function AverageTooltip({
   const validScores = averageData.filter((score) => score !== null) as number[]
   if (validScores.length < 2) return null
 
-  const jobtrekToFinalProgression = calculateJobtrekToFinalProgression(trajectories)
+  const jobtrekToFinalProgression = calculateImprovementPercentage(trajectories)
 
   let progressionData
   if (isThreePointView && validScores.length === 3) {
@@ -256,7 +255,7 @@ export function LinearChart({ trajectories }: LinearChartProps) {
 
   const improvementPercentage = React.useMemo(() => {
     if (!trajectories || trajectories.length === 0) return 100
-    return calculateJobtrekToFinalProgression(trajectories)
+    return calculateImprovementPercentage(trajectories)
   }, [trajectories])
 
   const chartData = React.useMemo(() => {
