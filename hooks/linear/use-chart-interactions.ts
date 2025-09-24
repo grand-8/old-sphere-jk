@@ -210,9 +210,18 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
     chart.update("none")
   }, [])
 
+  const lastHoverTime = useRef(0)
+  const HOVER_THROTTLE_MS = 16 // ~60fps
+
   const handleHover = useCallback(
     (event: any, activeElements: any, chart: ChartJS<"line">) => {
       if (!chart || !event.native) return
+
+      const now = Date.now()
+      if (now - lastHoverTime.current < HOVER_THROTTLE_MS) {
+        return
+      }
+      lastHoverTime.current = now
 
       if (isPanMode) {
         return
@@ -225,18 +234,26 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
       const clientY = (event.native as MouseEvent).clientY
 
       const isThreePointView = chart.config?.options?.isThreePointView || false
-      console.log(`[v0] HOVER_HOOK - View: ${isThreePointView ? "SIMPLIFIED" : "COMPLETE"}`)
-      console.log(`[v0] HOVER_HOOK - Mouse position: (${mouseX.toFixed(1)}, ${mouseY.toFixed(1)})`)
 
-      const maxDistance = 20
-      console.log(`[v0] HOVER_HOOK - Using unified maxDistance: ${maxDistance}`)
+      const shouldLog = now % 200 < 20 // Log only ~10% of the time
+      if (shouldLog) {
+        console.log(`[v0] HOVER_HOOK - View: ${isThreePointView ? "SIMPLIFIED" : "COMPLETE"}`)
+        console.log(`[v0] HOVER_HOOK - Mouse position: (${mouseX.toFixed(1)}, ${mouseY.toFixed(1)})`)
+      }
+
+      const maxDistance = 25
+      if (shouldLog) {
+        console.log(`[v0] HOVER_HOOK - Using maxDistance: ${maxDistance}`)
+      }
 
       const closestTrajectoryId = findClosestTrajectoryToMouse(chart, mouseX, mouseY, maxDistance)
 
-      console.log(`[v0] HOVER_HOOK - Closest trajectory from utils: ${closestTrajectoryId || "NONE"}`)
+      if (shouldLog) {
+        console.log(`[v0] HOVER_HOOK - Closest trajectory from utils: ${closestTrajectoryId || "NONE"}`)
+      }
 
       if (closestTrajectoryId === "progression") {
-        console.log(`[v0] HOVER_HOOK - Handling progression line`)
+        if (shouldLog) console.log(`[v0] HOVER_HOOK - Handling progression line`)
         const progressionDataset = chartData.datasets.find(
           (dataset: any) => dataset.trajectoryId === "progression",
         ) as any
@@ -268,7 +285,7 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
           ;(event.native.target as HTMLElement).style.cursor = "pointer"
         }
       } else if (closestTrajectoryId === "average") {
-        console.log(`[v0] HOVER_HOOK - Handling average line`)
+        if (shouldLog) console.log(`[v0] HOVER_HOOK - Handling average line`)
         const averageDataset = chartData.datasets.find((dataset: any) => dataset.trajectoryId === "average") as any
 
         const averageDatasetIndex = chartData.datasets.findIndex((dataset: any) => dataset.trajectoryId === "average")
@@ -290,7 +307,7 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
           ;(event.native.target as HTMLElement).style.cursor = "pointer"
         }
       } else if (closestTrajectoryId) {
-        console.log(`[v0] HOVER_HOOK - Handling individual trajectory: ${closestTrajectoryId}`)
+        if (shouldLog) console.log(`[v0] HOVER_HOOK - Handling individual trajectory: ${closestTrajectoryId}`)
         const trajectoryData = trajectories.find((t) => t.id === closestTrajectoryId)
 
         const trajectoryDatasetIndex = chartData.datasets.findIndex(
@@ -334,7 +351,7 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
           ;(event.native.target as HTMLElement).style.cursor = "pointer"
         }
       } else {
-        console.log(`[v0] HOVER_HOOK - No trajectory found, clearing hover state`)
+        if (shouldLog) console.log(`[v0] HOVER_HOOK - No trajectory found, clearing hover state`)
         updateChartHighlight(chart, [])
 
         setHoveredTrajectoryId(null)
