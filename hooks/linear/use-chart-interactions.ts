@@ -227,8 +227,8 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
       console.log(`[v0] HOVER_HOOK - View: ${isThreePointView ? "SIMPLIFIED" : "COMPLETE"}`)
       console.log(`[v0] HOVER_HOOK - Mouse position: (${mouseX.toFixed(1)}, ${mouseY.toFixed(1)})`)
 
-      const maxDistance = isThreePointView ? 20 : 15
-      console.log(`[v0] HOVER_HOOK - Using maxDistance: ${maxDistance}`)
+      const maxDistance = 20
+      console.log(`[v0] HOVER_HOOK - Using unified maxDistance: ${maxDistance}`)
 
       const closestTrajectoryId = findClosestTrajectoryToMouse(chart, mouseX, mouseY, maxDistance)
 
