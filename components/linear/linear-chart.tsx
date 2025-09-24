@@ -270,7 +270,7 @@ export function LinearChart({ trajectories }: LinearChartProps) {
       const averageData = calculateAverageData(sortedYears, processedTrajectories, trajectories, isThreePointView)
       const progressionData = calculateProgressionData(sortedYears, averageData, trajectories)
 
-      datasets.push(createAverageDataset(averageData, hoveredLineId, isThreePointView))
+      datasets.push(createAverageDataset(averageData, hoveredLineId, isThreePointView, trajectories))
 
       if (isThreePointView) {
         datasets.push(createProgressionDataset(progressionData, hoveredLineId, averageData))
