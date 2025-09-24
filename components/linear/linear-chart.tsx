@@ -4,7 +4,7 @@ import React, { useState, useCallback, useEffect } from "react"
 import Chart from "chart.js/auto"
 import { Line } from "react-chartjs-2"
 import type { LifeTrajectory } from "@/lib/data-service"
-import { applyPeakFinesse } from "@/utils/linear/chart-calculations"
+import { applyPeakFinesse, calculateDistanceToLineSegment } from "@/utils/linear/chart-calculations"
 import { Plus, Minus, RotateCcw } from "lucide-react"
 import { useChartInteractions } from "@/hooks/linear/use-chart-interactions"
 import { PEAK_COLORS, CHART_LAYOUT, CHART_SCALES, LABEL_ALIGNMENT_STYLES } from "@/config/chart-styles"
@@ -569,76 +569,4 @@ export function LinearChart({ trajectories }: LinearChartProps) {
       {showStatistics && <StatisticsModal statistics={statistics} onClose={handleCloseStatistics} />}
     </div>
   )
-}
-
-function findClosestTrajectoryToMouse(chart: any, mouseX: number, mouseY: number, maxDistance = 20): string | null {
-  let closestTrajectoryId: string | null = null
-  let minDistance = maxDistance
-
-  chart.data.datasets.forEach((dataset: any, datasetIndex) => {
-    if (dataset.isAverage || dataset.isProgression || !dataset.trajectoryId) {
-      return
-    }
-
-    const meta = chart.getDatasetMeta(datasetIndex)
-    if (!meta.visible) {
-      return
-    }
-
-    for (let i = 0; i < meta.data.length - 1; i++) {
-      const point1 = meta.data[i] as any
-      const point2 = meta.data[i + 1] as any
-
-      if (!point1 || !point2) continue
-
-      const distance = calculateDistanceToLineSegment(mouseX, mouseY, point1.x, point1.y, point2.x, point2.y)
-
-      if (distance < 50) {
-        console.log(
-          `[v0] FIND_CLOSEST_LOCAL - Segment ${i}-${i + 1}: distance=${distance.toFixed(2)}, points=(${point1.x.toFixed(1)},${point1.y.toFixed(1)}) to (${point2.x.toFixed(1)},${point2.y.toFixed(1)})`,
-        )
-      }
-
-      if (distance < minDistance) {
-        minDistance = distance
-        closestTrajectoryId = dataset.trajectoryId
-        console.log(`[v0] FIND_CLOSEST_LOCAL - NEW CLOSEST: ${closestTrajectoryId} at distance ${distance.toFixed(2)}`)
-      }
-    }
-  })
-
-  console.log(
-    `[v0] FIND_CLOSEST_LOCAL - Final result: ${closestTrajectoryId || "NONE"} at distance ${minDistance.toFixed(2)}`,
-  )
-  return closestTrajectoryId
-}
-
-function calculateDistanceToLineSegment(
-  mouseX: number,
-  mouseY: number,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-): number {
-  const A = mouseX - x1
-  const B = mouseY - y1
-  const C = x2 - x1
-  const D = y2 - y1
-
-  const dot = A * C + B * D
-  const lenSq = C * C + D * D
-
-  if (lenSq === 0) return Math.sqrt(A * A + B * B)
-
-  let param = dot / lenSq
-  param = Math.max(0, Math.min(1, param))
-
-  const xx = x1 + param * C
-  const yy = y1 + param * D
-
-  const dx = mouseX - xx
-  const dy = mouseY - yy
-
-  return Math.sqrt(dx * dx + dy * dy)
 }
