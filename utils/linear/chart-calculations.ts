@@ -158,9 +158,6 @@ export function findClosestTrajectoryToMouse(
   })
 
   const winner = candidates[0]
-  console.log(
-    `[v0] FIND_CLOSEST - Found: ${winner.trajectoryId} (segment: ${winner.minSegmentDistance.toFixed(1)}px, centroid: ${winner.centroidDistance.toFixed(1)}px)`,
-  )
 
   return winner.trajectoryId
 }
