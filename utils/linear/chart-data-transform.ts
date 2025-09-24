@@ -160,14 +160,17 @@ export function calculateProgressionData(
     if (sortedYears.length === 3) {
       // In three-point view, progression line starts at index 1 (Pré-Jobtrek)
       if (index === 0) return null // No line before Pré-Jobtrek
-      if (index === 1) return averageData[1] // Start at average value at Pré-Jobtrek point
+      if (index === 1) {
+        const preJobtrekScore = averageData[1] // Get the average score at Pré-Jobtrek
+        return preJobtrekScore // Start at the actual average value, not 0%
+      }
 
       // Calculate progression from Pré-Jobtrek to Final
       const currentScore = averageData[index]
       const preJobtrekScore = averageData[1] // Pré-Jobtrek point
       if (currentScore === null || preJobtrekScore === null || preJobtrekScore === 0) return null
       const progression = ((currentScore - preJobtrekScore) / Math.abs(preJobtrekScore)) * 100
-      return currentScore // Return actual final score instead of percentage progression
+      return preJobtrekScore + (progression / 100) * Math.abs(preJobtrekScore)
     }
 
     // Original logic for non-three-point view
