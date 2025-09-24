@@ -203,6 +203,9 @@ export function createTrajectoryDataset(
     borderWidth: isHighlighted
       ? DATASET_STYLES.trajectory.borderWidth.highlighted
       : DATASET_STYLES.trajectory.borderWidth.normal,
+    hoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0), // White color for hover
+    hoverBorderWidth: 4, // Thicker line when hovered
+    hoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.1), // Subtle white background
     pointRadius: isHighlighted
       ? DATASET_STYLES.trajectory.pointRadius.highlighted
       : DATASET_STYLES.trajectory.pointRadius.normal,
@@ -219,6 +222,8 @@ export function createTrajectoryDataset(
       if (!chartArea) return applyPeakFinesse(PEAK_COLORS.blue, 0.4)
       return createPeakInspiredGradient(ctx, chartArea, data, isHighlighted)
     },
+    pointHoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0), // White border on hover
+    pointHoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.3), // White background on hover
     pointBorderWidth: DATASET_STYLES.trajectory.pointBorderWidth,
     tension: DATASET_STYLES.trajectory.tension,
     fill: DATASET_STYLES.trajectory.fill,
@@ -276,6 +281,9 @@ export function createAverageDataset(
       hoveredTrajectory === "average"
         ? DATASET_STYLES.average.borderDash.highlighted
         : DATASET_STYLES.average.borderDash.normal,
+    hoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0), // White color for hover
+    hoverBorderWidth: 5, // Extra thick line when hovered
+    hoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.2), // Subtle white background
     pointRadius:
       hoveredTrajectory === "average"
         ? DATASET_STYLES.average.pointRadius.highlighted
@@ -283,6 +291,8 @@ export function createAverageDataset(
     pointHoverRadius: DATASET_STYLES.average.pointHoverRadius,
     pointBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0),
     pointBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.2),
+    pointHoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0), // White border on hover
+    pointHoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.4), // White background on hover
     pointBorderWidth: DATASET_STYLES.average.pointBorderWidth,
     tension: DATASET_STYLES.average.tension,
     fill: DATASET_STYLES.average.fill,
@@ -327,6 +337,9 @@ export function createProgressionDataset(
       hoveredTrajectory === "progression"
         ? DATASET_STYLES.progression.borderDash.highlighted
         : DATASET_STYLES.progression.borderDash.normal,
+    hoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0), // White color for hover
+    hoverBorderWidth: 5, // Extra thick line when hovered
+    hoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.2), // Subtle white background
     pointRadius:
       hoveredTrajectory === "progression"
         ? DATASET_STYLES.progression.pointRadius.highlighted
@@ -334,6 +347,8 @@ export function createProgressionDataset(
     pointHoverRadius: DATASET_STYLES.progression.pointHoverRadius,
     pointBorderColor: applyPeakFinesse(PEAK_COLORS.accent, 0),
     pointBackgroundColor: applyPeakFinesse(PEAK_COLORS.accent, 0.2),
+    pointHoverBorderColor: applyPeakFinesse(PEAK_COLORS.highlight, 0), // White border on hover
+    pointHoverBackgroundColor: applyPeakFinesse(PEAK_COLORS.highlight, 0.4), // White background on hover
     pointBorderWidth: DATASET_STYLES.progression.pointBorderWidth,
     tension: DATASET_STYLES.progression.tension,
     fill: DATASET_STYLES.progression.fill,
