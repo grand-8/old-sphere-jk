@@ -316,22 +316,6 @@ export function LinearChart({ trajectories }: LinearChartProps) {
     setShowStatistics(false)
   }, [])
 
-  const enhancedHandleHover = useCallback(
-    (event: any, activeElements: any[], chart: any) => {
-      console.log(`[v0] HOVER_ENHANCED - Event triggered, activeElements:`, activeElements?.length || 0)
-
-      // Call the main hover handler from the hook
-      handleHover(event, activeElements, chart)
-
-      // Force chart update to apply hover styles
-      if (chart && activeElements?.length > 0) {
-        console.log(`[v0] HOVER_ENHANCED - Forcing chart update for hover styles`)
-        chart.update("none")
-      }
-    },
-    [handleHover],
-  )
-
   const enhancedHandleClick = useCallback(
     (event: any, elements: any[], chart: any) => {
       if (!chart || !event.native) {
@@ -465,31 +449,20 @@ export function LinearChart({ trajectories }: LinearChartProps) {
             font: dynamicScales.y1.title.font,
           },
           min: dynamicScales.y1.min,
-          max: dynamicScales.y1.max, // Use dynamic max instead of hardcoded value
+          max: dynamicScales.y1.max,
           ticks: {
             color: applyPeakFinesse(PEAK_COLORS.accent, 0.7),
-            stepSize: dynamicScales.y1.ticks.stepSize, // Use dynamic step size
+            stepSize: dynamicScales.y1.ticks.stepSize,
             callback: (value) => value + "%",
           },
           grid: dynamicScales.y1.grid,
         },
       },
-      onHover: enhancedHandleHover,
+      onHover: handleHover,
       onClick: enhancedHandleClick,
       isThreePointView: isThreePointView,
     }
-  }, [
-    chartData,
-    hoveredTrajectory,
-    isHoveringLine,
-    isThreePointView,
-    trajectories,
-    zoomLevel,
-    isPanMode,
-    enhancedHandleHover,
-    enhancedHandleClick,
-    improvementPercentage, // Add improvementPercentage as dependency
-  ])
+  }, [isThreePointView, zoomLevel, handleHover, enhancedHandleClick, improvementPercentage])
 
   const statistics = showStatistics ? calculateJobtrekStatistics(trajectories) : null
 

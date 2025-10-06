@@ -207,11 +207,11 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
 
   const updateChartHighlight = useCallback((chart: ChartJS<"line">, activeElements: any[] = []) => {
     chart.setActiveElements(activeElements)
-    chart.update("none")
+    // chart.update("none") // REMOVED - this was causing the infinite loop
   }, [])
 
   const lastHoverTime = useRef(0)
-  const HOVER_THROTTLE_MS = 16 // ~60fps
+  const HOVER_THROTTLE_MS = 50 // Increased from 16ms to 50ms for better performance
 
   const handleHover = useCallback(
     (event: any, activeElements: any, chart: ChartJS<"line">) => {
