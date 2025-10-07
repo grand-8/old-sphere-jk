@@ -337,7 +337,7 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
       <div
         ref={modalRef}
-        className="relative w-[80vw] max-w-xl max-h-[80vh] overflow-auto bg-black/80 backdrop-blur-md border border-gray-800 rounded-xl shadow-2xl pointer-events-auto"
+        className="relative w-[80vw] max-w-xl max-h-[80vh] overflow-auto bg-black/80 backdrop-blur-md border border-gray-800 rounded-xl shadow-2xl pointer-events-auto dark-scrollbar"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 z-10 flex items-center justify-between p-6 border-b border-gray-800 bg-black/80 backdrop-blur-sm">

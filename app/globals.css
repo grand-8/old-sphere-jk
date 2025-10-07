@@ -6,6 +6,33 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  /* Dark themed scrollbar for modals */
+  .dark-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .dark-scrollbar::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+  }
+
+  .dark-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(75, 85, 99, 0.6); /* gray-600 with opacity */
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+
+  .dark-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(107, 114, 128, 0.8); /* gray-500 with opacity */
+  }
+
+  /* Firefox */
+  .dark-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(75, 85, 99, 0.6) rgba(0, 0, 0, 0.3);
+  }
 }
 
 @layer base {
