@@ -488,6 +488,7 @@ export function LinearChart({ trajectories }: LinearChartProps) {
                 {tooltipState.trajectory.points[0]?.year || new Date().getFullYear()}
               </div>
               <div className="text-gray-300">
+                <span className="text-gray-400">Progression post-jobtrek:</span>{" "}
                 <span className={tooltipState.trajectory.progressionPercent >= 0 ? "text-green-400" : "text-red-400"}>
                   {tooltipState.trajectory.progressionPercent >= 0 ? "+" : ""}
                   {tooltipState.trajectory.progressionPercent}%
