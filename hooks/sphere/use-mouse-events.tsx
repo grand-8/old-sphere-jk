@@ -4,6 +4,7 @@ import type React from "react"
 import { useRef, useCallback } from "react"
 import * as THREE from "three"
 import type { LifeTrajectory } from "@/lib/data-service"
+import { calculateIndividualImprovement } from "@/lib/statistics-calculator"
 
 // Couleurs pour les éléments visuels
 const COLORS = {
@@ -132,12 +133,20 @@ export function useMouseEvents(
 
         if (metadata.type === "trajectory") {
           const trajectory = metadata.data
-          // Nouveau format simplifié
           const userCode = trajectory.userCode || trajectory.id.substring(0, 4).toUpperCase()
+
+          const progressionPercent = calculateIndividualImprovement(trajectory)
+
           tooltipContent = `
             <div class="font-bold text-base">Parcours de ${userCode}</div>
             ${trajectory.typeMesure ? `<div class="text-xs text-gray-300 mt-1">Type: ${trajectory.typeMesure}</div>` : ""}
             <div class="text-xs text-gray-300">Début: ${trajectory.startYear}</div>
+            <div class="text-xs text-gray-300">
+              <span class="text-gray-400">Progression post-jobtrek:</span>
+              <span class="${progressionPercent >= 0 ? "text-green-400" : "text-red-400"}">
+                ${progressionPercent >= 0 ? "+" : ""}${progressionPercent}%
+              </span>
+            </div>
             <div class="text-xs text-blue-300 mt-1">Cliquez pour voir le profil</div>
           `
         } else {
