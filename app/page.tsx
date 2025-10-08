@@ -25,7 +25,51 @@ const LinearView = dynamic(
 export default function Home() {
   const [hasError, setHasError] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const { currentView, isIntroAnimationPlaying } = useLifeTrajectoryStore()
+  const { currentView, isIntroAnimationPlaying, trajectoryData, isLoading, setSelectedPerson } =
+    useLifeTrajectoryStore()
+
+  useEffect(() => {
+    if (typeof window === "undefined" || isLoading || trajectoryData.length === 0) return
+
+    const params = new URLSearchParams(window.location.search)
+    const trajectoryCode = params.get("trajectory") || params.get("t")
+
+    if (trajectoryCode) {
+      const trajectory = trajectoryData.find((t) => t.userCode === trajectoryCode)
+
+      if (trajectory) {
+        console.log("[v0] Opening trajectory from URL:", trajectoryCode)
+        setSelectedPerson(trajectory)
+      } else {
+        console.warn("[v0] Trajectory not found:", trajectoryCode)
+        // Clean up invalid URL parameter
+        window.history.replaceState({}, "", "/")
+      }
+    }
+  }, [isLoading, trajectoryData, setSelectedPerson])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search)
+      const trajectoryCode = params.get("trajectory") || params.get("t")
+
+      if (!trajectoryCode) {
+        // Close modal when navigating back to root URL
+        setSelectedPerson(null)
+      } else {
+        // Open modal when navigating forward to trajectory URL
+        const trajectory = trajectoryData.find((t) => t.userCode === trajectoryCode)
+        if (trajectory) {
+          setSelectedPerson(trajectory)
+        }
+      }
+    }
+
+    window.addEventListener("popstate", handlePopState)
+    return () => window.removeEventListener("popstate", handlePopState)
+  }, [trajectoryData, setSelectedPerson])
 
   useEffect(() => {
     setMounted(true)
@@ -114,6 +158,18 @@ export default function Home() {
 
       <div className="absolute bottom-4 right-4 z-50">
         <ViewSwitcher isIntroAnimationPlaying={isIntroAnimationPlaying} />
+      </div>
+
+      <div className="absolute bottom-4 left-4 z-50 text-white/60 text-xs hover:text-white/80 transition-colors">
+        by :{" "}
+        <a
+          href="https://therise.ch"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline decoration-white/30 hover:decoration-white/60 transition-all"
+        >
+          rise
+        </a>
       </div>
 
       {currentView === "sphere" ? <SphereView /> : <LinearView />}

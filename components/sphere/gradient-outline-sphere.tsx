@@ -73,11 +73,23 @@ export default function GradientOutlineSphere() {
   )
   const { resetHighlight } = mouseEvents
 
+  const handleSetSelectedTrajectory = useCallback((trajectory: LifeTrajectory | null) => {
+    setSelectedTrajectory(trajectory)
+
+    if (typeof window !== "undefined") {
+      if (trajectory) {
+        window.history.pushState({}, "", `/?trajectory=${trajectory.userCode}`)
+      } else {
+        window.history.pushState({}, "", "/")
+      }
+    }
+  }, [])
+
   // Hook de gestion des interactions
   const interactionManager = useInteractionManager(
     {
       selectedTrajectory,
-      setSelectedTrajectory,
+      setSelectedTrajectory: handleSetSelectedTrajectory,
       controlsEnabled,
       setControlsEnabled,
       isZoomedIn,

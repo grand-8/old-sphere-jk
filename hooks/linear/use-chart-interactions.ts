@@ -354,6 +354,10 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
 
         if (originalTrajectory) {
           setSelectedPerson(originalTrajectory)
+          // Update URL with trajectory code
+          if (typeof window !== "undefined") {
+            window.history.pushState({}, "", `/?trajectory=${originalTrajectory.userCode}`)
+          }
         }
       } else {
         if (activeElements.length > 0) {
@@ -366,6 +370,10 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
 
             if (originalTrajectory) {
               setSelectedPerson(originalTrajectory)
+              // Update URL with trajectory code
+              if (typeof window !== "undefined") {
+                window.history.pushState({}, "", `/?trajectory=${originalTrajectory.userCode}`)
+              }
             }
           }
         }

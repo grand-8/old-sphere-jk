@@ -39,6 +39,9 @@ export function LinearView() {
 
   const handleCloseProfile = useCallback(() => {
     setSelectedPerson(null)
+    if (typeof window !== "undefined") {
+      window.history.pushState({}, "", "/")
+    }
   }, [setSelectedPerson])
 
   const handleOpenStatistics = useCallback(() => {
@@ -80,10 +83,10 @@ export function LinearView() {
       <UIControls
         handleUIEvent={handleUIEvent}
         handleRefresh={handleRefresh}
-        isZoomedIn={false} // Pas de zoom dans la vue linéaire
+        isZoomedIn={false}
         isLoading={isLoading}
-        setControlsEnabled={() => {}} // Pas de contrôles 3D dans la vue linéaire
-        performZoom={() => {}} // Pas de zoom dans la vue linéaire
+        setControlsEnabled={() => {}}
+        performZoom={() => {}}
         onStatisticsClick={handleOpenStatistics}
       />
 
