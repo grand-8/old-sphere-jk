@@ -44,9 +44,12 @@ function calculateSimpleBeforeAfter(trajectories: LifeTrajectory[]): { beforeAvg
     const firstJobtrekYear = findFirstJobtrekYear(trajectory)
     if (!firstJobtrekYear) return
 
+    const jobtrekPointIndex = trajectory.points.findIndex((p) => p.year === firstJobtrekYear && isJobtrekEvent(p.event))
+    if (jobtrekPointIndex === -1) return
+
     // Calculer la moyenne avant Jobtrek pour cette trajectoire
-    const beforePoints = trajectory.points.filter((p) => p.year < firstJobtrekYear)
-    const afterPoints = trajectory.points.filter((p) => p.year > firstJobtrekYear)
+    const beforePoints = trajectory.points.filter((p, index) => index < jobtrekPointIndex)
+    const afterPoints = trajectory.points.filter((p, index) => index > jobtrekPointIndex)
 
     if (beforePoints.length === 0 || afterPoints.length === 0) return
 
@@ -116,41 +119,24 @@ export function calculateJobtrekStatistics(trajectories: LifeTrajectory[]): Jobt
 }
 
 export function calculateImprovementPercentage(trajectories: LifeTrajectory[]): number {
-  console.log("[v0] STAT MODAL - calculateImprovementPercentage called with", trajectories.length, "trajectories")
-
   let totalImprovements = 0
   let validTrajectories = 0
 
-  trajectories.forEach((trajectory, index) => {
+  trajectories.forEach((trajectory) => {
     const individualImprovement = calculateIndividualImprovement(trajectory)
-    console.log(
-      `[v0] STAT MODAL - Trajectory ${index} (${trajectory.userCode}): improvement = ${individualImprovement}%`,
-    )
 
     // Exclure toutes les trajectoires qui ont un calcul valide à 0% (même 0%)
     const firstJobtrekYear = findFirstJobtrekYear(trajectory)
     if (firstJobtrekYear && individualImprovement !== 0) {
       totalImprovements += individualImprovement
       validTrajectories++
-      console.log(
-        `[v0] STAT MODAL - Added trajectory ${trajectory.userCode}: running total = ${totalImprovements}, valid count = ${validTrajectories}`,
-      )
-    } else if (firstJobtrekYear && individualImprovement === 0) {
-      console.log(
-        `[v0] STAT MODAL - Excluded trajectory ${trajectory.userCode}: 0% improvement (no post-jobtrek progression)`,
-      )
-    } else {
-      console.log(`[v0] STAT MODAL - Skipped trajectory ${trajectory.userCode}: no Jobtrek year found`)
     }
   })
 
   if (validTrajectories === 0) return 0
 
   // Retourner la moyenne des améliorations individuelles (excluant les 0%)
-  const result = Math.round(totalImprovements / validTrajectories)
-  console.log(`[v0] STAT MODAL - Final result: ${result}% (total: ${totalImprovements}, valid: ${validTrajectories})`)
-
-  return result
+  return Math.round(totalImprovements / validTrajectories)
 }
 
 function calculateTopPostJobtrekEvents(trajectories: LifeTrajectory[]): Array<{ event: string; percentage: number }> {
@@ -161,9 +147,12 @@ function calculateTopPostJobtrekEvents(trajectories: LifeTrajectory[]): Array<{ 
     const firstJobtrekYear = findFirstJobtrekYear(trajectory)
     if (!firstJobtrekYear) return
 
+    const jobtrekPointIndex = trajectory.points.findIndex((p) => p.year === firstJobtrekYear && isJobtrekEvent(p.event))
+    if (jobtrekPointIndex === -1) return
+
     // Compter les événements après Jobtrek (exclure les événements Jobtrek eux-mêmes)
     const postJobtrekEvents = trajectory.points.filter(
-      (p) => p.year > firstJobtrekYear && !isJobtrekEvent(p.event) && p.event !== "Année stable",
+      (p, index) => index > jobtrekPointIndex && !isJobtrekEvent(p.event) && p.event !== "Année stable",
     )
 
     postJobtrekEvents.forEach((point) => {
@@ -223,14 +212,16 @@ function calculateMeasureDistribution(trajectories: LifeTrajectory[]): {
 // Fonction pour calculer l'amélioration individuelle après Jobtrek
 export function calculateIndividualImprovement(trajectory: LifeTrajectory): number {
   const firstJobtrekYear = findFirstJobtrekYear(trajectory)
-
   if (!firstJobtrekYear) return 0
 
-  // Trouver le point Jobtrek pour obtenir le score au moment de Jobtrek
-  const jobtrekPoint = trajectory.points.find((p) => p.year === firstJobtrekYear && isJobtrekEvent(p.event))
-  const afterPoints = trajectory.points.filter((p) => p.year > firstJobtrekYear)
+  const jobtrekPointIndex = trajectory.points.findIndex((p) => p.year === firstJobtrekYear && isJobtrekEvent(p.event))
+  if (jobtrekPointIndex === -1) return 0
 
-  if (!jobtrekPoint || afterPoints.length === 0) return 0
+  const jobtrekPoint = trajectory.points[jobtrekPointIndex]
+
+  // This includes events in the same year that occur after Jobtrek
+  const afterPoints = trajectory.points.filter((p, index) => index > jobtrekPointIndex)
+  if (afterPoints.length === 0) return 0
 
   // Comparer le score cumulatif AU MOMENT de Jobtrek avec le score final
   const jobtrekScore = jobtrekPoint.cumulativeScore
@@ -243,7 +234,6 @@ export function calculateIndividualImprovement(trajectory: LifeTrajectory): numb
   }
 
   const improvement = ((finalScore - jobtrekScore) / Math.abs(jobtrekScore)) * 100
-
   return Math.round(improvement)
 }
 
@@ -254,7 +244,7 @@ function calculateProgressionBreakdown(trajectories: LifeTrajectory[]): {
   totalCount: number
 } {
   let progressionCount = 0
-  const stagnationCount = 0
+  let stagnationCount = 0
   let regressionCount = 0
   let totalCount = 0
 
@@ -262,19 +252,31 @@ function calculateProgressionBreakdown(trajectories: LifeTrajectory[]): {
     const individualImprovement = calculateIndividualImprovement(trajectory)
     const firstJobtrekYear = findFirstJobtrekYear(trajectory)
 
-    if (firstJobtrekYear && individualImprovement !== 0) {
-      totalCount++
-      if (individualImprovement > 0) {
-        progressionCount++
-      } else {
-        regressionCount++
+    if (firstJobtrekYear) {
+      const jobtrekPointIndex = trajectory.points.findIndex(
+        (p) => p.year === firstJobtrekYear && isJobtrekEvent(p.event),
+      )
+      if (jobtrekPointIndex === -1) return
+
+      const afterPoints = trajectory.points.filter((p, index) => index > jobtrekPointIndex)
+
+      // Only count trajectories that have points after Jobtrek
+      if (afterPoints.length > 0) {
+        totalCount++
+
+        if (individualImprovement > 0) {
+          progressionCount++
+        } else if (individualImprovement === 0) {
+          stagnationCount++
+        } else {
+          regressionCount++
+        }
       }
     }
-    // Note: Les parcours à 0% ne sont plus comptés dans stagnationCount car ils sont exclus
   })
 
   const progressionPercentage = totalCount > 0 ? Math.round((progressionCount / totalCount) * 100) : 0
-  const stagnationPercentage = 0 // Plus de stagnation car les 0% sont exclus
+  const stagnationPercentage = totalCount > 0 ? Math.round((stagnationCount / totalCount) * 100) : 0
   const regressionPercentage = totalCount > 0 ? Math.round((regressionCount / totalCount) * 100) : 0
 
   return {
