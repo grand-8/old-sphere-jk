@@ -31,18 +31,29 @@ export function ViewSwitcher({ className, isIntroAnimationPlaying = false }: Vie
   return (
     <div
       className={`flex items-center gap-2 ${visibilityClasses} ${transitionClasses} ${className}`}
-      style={{ isolation: "isolate" }}
+      style={{
+        isolation: "isolate",
+        WebkitTransform: "translateZ(0)",
+        transform: "translateZ(0)",
+        willChange: "transform",
+      }}
       data-ui-element="true"
     >
       <button
         onClick={() => handleViewChange("sphere")}
         onMouseDown={handleUIEvent}
         onMouseMove={handleUIEvent}
-        className={`w-10 h-10 backdrop-blur-sm transition-colors rounded-full border shadow-lg flex items-center justify-center ${
+        className={`w-10 h-10 transition-colors rounded-full border shadow-lg flex items-center justify-center ${
           currentView === "sphere"
             ? "bg-white text-black border-white"
             : "bg-black/50 text-white border-white/20 hover:border-white/40"
         }`}
+        style={{
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          WebkitTransform: "translateZ(0)",
+          transform: "translateZ(0)",
+        }}
         aria-label="Vue sphère"
         data-ui-element="true"
       >
@@ -52,11 +63,17 @@ export function ViewSwitcher({ className, isIntroAnimationPlaying = false }: Vie
         onClick={() => handleViewChange("linear")}
         onMouseDown={handleUIEvent}
         onMouseMove={handleUIEvent}
-        className={`w-10 h-10 backdrop-blur-sm transition-colors rounded-full border shadow-lg flex items-center justify-center ${
+        className={`w-10 h-10 transition-colors rounded-full border shadow-lg flex items-center justify-center ${
           currentView === "linear"
             ? "bg-white text-black border-white"
             : "bg-black/50 text-white border-white/20 hover:border-white/40"
         }`}
+        style={{
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          WebkitTransform: "translateZ(0)",
+          transform: "translateZ(0)",
+        }}
         aria-label="Vue linéaire"
         data-ui-element="true"
       >

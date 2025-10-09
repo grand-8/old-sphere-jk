@@ -162,7 +162,15 @@ export default function Home() {
         <ViewSwitcher isIntroAnimationPlaying={isIntroAnimationPlaying} />
       </div>
 
-      <div className="absolute bottom-4 left-4 z-50 text-white/60 text-xs hover:text-white/80 transition-colors">
+      {/* iOS-specific fixes for transparent overlay */}
+      <div
+        className="absolute bottom-4 left-4 z-50 text-white/60 text-xs hover:text-white/80 transition-colors"
+        style={{
+          WebkitTransform: "translateZ(0)",
+          transform: "translateZ(0)",
+          willChange: "transform",
+        }}
+      >
         by :{" "}
         <a
           href="https://therise.ch"
