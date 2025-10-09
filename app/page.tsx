@@ -140,11 +140,13 @@ export default function Home() {
     <main className="relative w-full h-screen bg-black overflow-hidden">
       {currentView === "sphere" && (
         <div
-          className={`absolute bottom-20 left-0 right-0 text-center text-white z-40 ${titleVisibilityClasses} ${titleTransitionClasses}`}
+          className={`absolute bottom-20 left-0 right-0 text-center text-white z-40 px-4 ${titleVisibilityClasses} ${titleTransitionClasses}`}
           style={{ isolation: "isolate" }}
         >
-          <h2 className="text-5xl md:text-7xl font-bold leading-tight">Trajectoires de vie</h2>
-          <p className="text-gray-400 text-lg md:text-xl mt-4">Chaque parcours est une pièce de notre économie.</p>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold leading-tight">Trajectoires de vie</h2>
+          <p className="text-gray-400 text-sm sm:text-base md:text-lg lg:text-xl mt-2 md:mt-4">
+            Chaque parcours est une pièce de notre économie.
+          </p>
         </div>
       )}
 

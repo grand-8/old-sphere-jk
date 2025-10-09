@@ -63,7 +63,7 @@ export function UIControls({
           onMouseDown={handleUIEvent}
           onMouseMove={handleUIEvent}
           disabled={isLoading}
-          className="w-10 h-10 bg-black/50 backdrop-blur-sm text-white rounded-full hover:bg-black/60 hover:border-white/40 transition-colors shadow-lg border border-white/20 flex items-center justify-center disabled:opacity-50"
+          className="hidden md:flex w-10 h-10 bg-black/50 backdrop-blur-sm text-white rounded-full hover:bg-black/60 hover:border-white/40 transition-colors shadow-lg border border-white/20 items-center justify-center disabled:opacity-50"
           aria-label="Actualiser les données"
           data-ui-element="true"
         >

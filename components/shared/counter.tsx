@@ -22,7 +22,9 @@ export function Counter() {
       data-ui-element="true"
     >
       <span className="text-white font-medium text-base">{count}</span>
-      <span className="text-gray-400 text-sm ml-2">{count === 1 ? "personne affichée" : "personnes affichées"}</span>
+      <span className="text-gray-400 text-sm ml-2 hidden md:inline">
+        {count === 1 ? "personne affichée" : "personnes affichées"}
+      </span>
     </div>
   )
 }
