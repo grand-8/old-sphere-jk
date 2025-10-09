@@ -34,6 +34,7 @@ export default function GradientOutlineSphere() {
   const [isUpdatingMountains, setIsUpdatingMountains] = useState(false)
   const [filterError, setFilterError] = useState<string | null>(null)
   const [isFilterActive, setIsFilterActive] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
   // Références simples
   const lastFilteredCountRef = useRef<number>(0)
@@ -147,12 +148,24 @@ export default function GradientOutlineSphere() {
 
   // Gestionnaire pour fermer la modal de statistiques
   const handleCloseStatistics = useCallback(() => {
-    setShowStatistics(false)
-    setControlsEnabled(false)
-    performZoom(false, () => {
-      setControlsEnabled(true)
-    })
-  }, [performZoom, setControlsEnabled])
+    if (isMobile) {
+      // On mobile: close modal first, then zoom out
+      setShowStatistics(false)
+      setTimeout(() => {
+        setControlsEnabled(false)
+        performZoom(false, () => {
+          setControlsEnabled(true)
+        })
+      }, 200) // Wait for modal fade out
+    } else {
+      // On desktop: zoom out with modal closing
+      setShowStatistics(false)
+      setControlsEnabled(false)
+      performZoom(false, () => {
+        setControlsEnabled(true)
+      })
+    }
+  }, [performZoom, setControlsEnabled, isMobile])
 
   const handleOpenStatistics = useCallback(() => {
     setControlsEnabled(false)
@@ -267,6 +280,15 @@ export default function GradientOutlineSphere() {
         }
       }
     }
+  }, [])
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener("resize", checkMobile)
+    return () => window.removeEventListener("resize", checkMobile)
   }, [])
 
   return (

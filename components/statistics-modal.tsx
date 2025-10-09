@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { X } from "lucide-react"
 import ReactECharts from "echarts-for-react"
 import type { JobtrekStatistics } from "@/lib/statistics-calculator"
@@ -12,19 +12,41 @@ interface StatisticsModalProps {
 
 export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
+  const [isClosing, setIsClosing] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener("resize", checkMobile)
+    return () => window.removeEventListener("resize", checkMobile)
+  }, [])
+
+  const handleClose = () => {
+    setIsClosing(true)
+    if (isMobile) {
+      setTimeout(() => {
+        onClose()
+      }, 200) // Quick fade out on mobile
+    } else {
+      onClose()
+    }
+  }
 
   useEffect(() => {
     // Fermer le modal lorsque l'utilisateur clique en dehors
     const handleClickOutside = (event: MouseEvent) => {
       if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-        onClose()
+        handleClose()
       }
     }
 
     // Fermer le modal lorsque l'utilisateur appuie sur Échap
     const handleEscKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        onClose()
+        handleClose()
       }
     }
 
@@ -35,7 +57,7 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
       document.removeEventListener("mousedown", handleClickOutside)
       document.removeEventListener("keydown", handleEscKey)
     }
-  }, [onClose])
+  }, [isMobile])
 
   if (!statistics) return null
 
@@ -192,7 +214,9 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
       <div
         ref={modalRef}
-        className="relative w-[80vw] max-w-4xl max-h-[80vh] overflow-auto bg-black/80 backdrop-blur-md border border-gray-800 rounded-xl shadow-2xl pointer-events-auto dark-scrollbar"
+        className={`relative w-full h-full md:w-[80vw] md:max-w-4xl md:max-h-[80vh] overflow-auto bg-black/80 backdrop-blur-md border border-gray-800 rounded-none md:rounded-xl shadow-2xl pointer-events-auto dark-scrollbar transition-opacity duration-200 ${
+          isClosing && isMobile ? "opacity-0" : "opacity-100"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* En-tête */}
@@ -204,7 +228,7 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
             </div>
           </div>
           <button
-            onClick={() => onClose()}
+            onClick={handleClose}
             className="rounded-full p-2 text-gray-400 hover:text-white hover:bg-gray-800 transition-colors cursor-pointer"
           >
             <X className="h-6 w-6" />

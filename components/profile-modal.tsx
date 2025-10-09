@@ -29,12 +29,26 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const { canvasRef, isReady } = useMiniMountain(trajectory)
   const [isClosing, setIsClosing] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener("resize", checkMobile)
+    return () => window.removeEventListener("resize", checkMobile)
+  }, [])
 
   const handleClose = () => {
-    console.log("[v0] Modal close debug - handleClose called")
-    console.log("[v0] Modal close debug - Current trajectory:", trajectory?.userCode)
     setIsClosing(true)
-    onClose()
+    if (isMobile) {
+      setTimeout(() => {
+        onClose()
+      }, 200)
+    } else {
+      onClose()
+    }
   }
 
   useEffect(() => {
@@ -337,7 +351,9 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
       <div
         ref={modalRef}
-        className="relative w-[80vw] max-w-xl max-h-[80vh] overflow-auto bg-black/80 backdrop-blur-md border border-gray-800 rounded-xl shadow-2xl pointer-events-auto dark-scrollbar"
+        className={`relative w-full h-full md:w-[80vw] md:max-w-xl md:max-h-[80vh] overflow-auto bg-black/80 backdrop-blur-md border border-gray-800 rounded-none md:rounded-xl shadow-2xl pointer-events-auto dark-scrollbar transition-opacity duration-200 ${
+          isClosing && isMobile ? "opacity-0" : "opacity-100"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 z-10 flex items-center justify-between p-6 border-b border-gray-800 bg-black/80 backdrop-blur-sm">
