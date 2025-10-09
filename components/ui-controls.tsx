@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import { useState } from "react"
 import { RefreshCw } from "lucide-react"
 import { SearchInput } from "@/components/shared/search-input"
 import { Counter } from "@/components/shared/counter"
@@ -28,6 +29,8 @@ export function UIControls({
   onStatisticsClick,
   isIntroAnimationPlaying = false,
 }: UIControlsProps) {
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false)
+
   const visibilityClasses = isIntroAnimationPlaying
     ? "opacity-0 pointer-events-none"
     : "opacity-100 pointer-events-auto"
@@ -36,34 +39,34 @@ export function UIControls({
 
   return (
     <div className="fixed inset-0 pointer-events-none">
-      {/* Compteur en haut à gauche */}
       <div
-        className={`absolute top-4 left-4 z-50 ${visibilityClasses} ${transitionClasses}`}
+        className={`absolute top-4 left-4 z-50 hidden md:block ${visibilityClasses} ${transitionClasses}`}
         style={{ isolation: "isolate" }}
       >
         <Counter />
       </div>
 
-      {/* Contrôles en haut à droite */}
       <div
-        className={`absolute top-4 right-4 flex items-center gap-3 ${visibilityClasses} ${transitionClasses}`}
+        className={`absolute top-4 right-4 flex items-center justify-end gap-3 ${visibilityClasses} ${transitionClasses}`}
         style={{ isolation: "isolate" }}
         data-ui-element="true"
       >
-        <InfoModal onMouseDown={handleUIEvent} onMouseMove={handleUIEvent} />
+        <div className={`${isSearchExpanded ? "hidden md:flex" : "flex"} items-center gap-3`}>
+          <InfoModal onMouseDown={handleUIEvent} onMouseMove={handleUIEvent} />
 
-        {onStatisticsClick && (
-          <StatisticsButton onClick={onStatisticsClick} onMouseDown={handleUIEvent} onMouseMove={handleUIEvent} />
-        )}
+          {onStatisticsClick && (
+            <StatisticsButton onClick={onStatisticsClick} onMouseDown={handleUIEvent} onMouseMove={handleUIEvent} />
+          )}
+        </div>
 
-        <SearchInput onMouseDown={handleUIEvent} onMouseMove={handleUIEvent} />
+        <SearchInput onMouseDown={handleUIEvent} onMouseMove={handleUIEvent} onExpandChange={setIsSearchExpanded} />
 
         <button
           onClick={handleRefresh}
           onMouseDown={handleUIEvent}
           onMouseMove={handleUIEvent}
           disabled={isLoading}
-          className="hidden md:flex w-10 h-10 bg-black/50 backdrop-blur-sm text-white rounded-full hover:bg-black/60 hover:border-white/40 transition-colors shadow-lg border border-white/20 items-center justify-center disabled:opacity-50"
+          className={`${isSearchExpanded ? "hidden" : "hidden md:flex"} w-10 h-10 bg-black/50 backdrop-blur-sm text-white rounded-full hover:bg-black/60 hover:border-white/40 transition-colors shadow-lg border border-white/20 items-center justify-center disabled:opacity-50`}
           aria-label="Actualiser les données"
           data-ui-element="true"
         >

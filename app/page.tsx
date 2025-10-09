@@ -140,7 +140,7 @@ export default function Home() {
     <main className="relative w-full h-screen bg-black overflow-hidden">
       {currentView === "sphere" && (
         <div
-          className={`absolute bottom-20 left-0 right-0 text-center text-white z-40 px-4 ${titleVisibilityClasses} ${titleTransitionClasses}`}
+          className={`absolute bottom-32 md:bottom-20 left-0 right-0 text-center text-white z-40 px-4 ${titleVisibilityClasses} ${titleTransitionClasses}`}
           style={{ isolation: "isolate" }}
         >
           <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold leading-tight">Trajectoires de vie</h2>
