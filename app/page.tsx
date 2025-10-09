@@ -137,7 +137,7 @@ export default function Home() {
   const titleTransitionClasses = "transition-all duration-700 ease-out"
 
   return (
-    <main className="relative w-full h-screen bg-black overflow-hidden">
+    <main className="relative w-full h-screen-ios bg-black overflow-hidden">
       {currentView === "sphere" && (
         <div
           className={`absolute bottom-32 md:bottom-20 left-0 right-0 text-center text-white z-40 px-4 ${titleVisibilityClasses} ${titleTransitionClasses}`}
@@ -158,13 +158,12 @@ export default function Home() {
         </div>
       )}
 
-      <div className="absolute bottom-4 right-4 z-50">
+      <div className="absolute bottom-8 md:bottom-4 right-4 md:right-4 z-50 pb-safe">
         <ViewSwitcher isIntroAnimationPlaying={isIntroAnimationPlaying} />
       </div>
 
-      {/* iOS-specific fixes for transparent overlay */}
       <div
-        className="absolute bottom-4 left-4 z-50 text-white/60 text-xs hover:text-white/80 transition-colors"
+        className="absolute bottom-8 md:bottom-4 left-4 z-50 text-white/60 text-xs hover:text-white/80 transition-colors pb-safe"
         style={{
           WebkitTransform: "translateZ(0)",
           transform: "translateZ(0)",

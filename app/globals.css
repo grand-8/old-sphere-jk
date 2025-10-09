@@ -7,6 +7,21 @@
     text-wrap: balance;
   }
 
+  /* Add iOS Safari viewport height support with dvh */
+  .h-screen-ios {
+    height: 100vh; /* Fallback for older browsers */
+    height: 100dvh; /* Dynamic viewport height for iOS Safari */
+  }
+
+  /* Add safe area inset padding for iOS */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 1rem);
+  }
+
+  .pb-safe-extra {
+    padding-bottom: calc(env(safe-area-inset-bottom, 1rem) + 4rem);
+  }
+
   /* Dark themed scrollbar for modals */
   .dark-scrollbar::-webkit-scrollbar {
     width: 8px;
