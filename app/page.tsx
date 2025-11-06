@@ -25,28 +25,38 @@ const LinearView = dynamic(
 export default function Home() {
   const [hasError, setHasError] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [hasProcessedUrlParam, setHasProcessedUrlParam] = useState(false)
   const { currentView, isIntroAnimationPlaying, trajectoryData, isLoading, setSelectedPerson } =
     useLifeTrajectoryStore()
 
   useEffect(() => {
-    if (typeof window === "undefined" || isLoading || trajectoryData.length === 0) return
+    // Wait for data to be loaded and avoid reprocessing
+    if (typeof window === "undefined" || isLoading || trajectoryData.length === 0 || hasProcessedUrlParam) return
 
     const params = new URLSearchParams(window.location.search)
     const trajectoryCode = params.get("trajectory") || params.get("t")
 
     if (trajectoryCode) {
+      console.log("[v0] Processing trajectory from URL:", trajectoryCode)
       const trajectory = trajectoryData.find((t) => t.userCode === trajectoryCode)
 
       if (trajectory) {
         console.log("[v0] Opening trajectory from URL:", trajectoryCode)
         setSelectedPerson(trajectory)
+        setHasProcessedUrlParam(true)
       } else {
         console.warn("[v0] Trajectory not found:", trajectoryCode)
-        // Clean up invalid URL parameter
-        window.history.replaceState({}, "", "/")
+        // Only clean up URL if data is fully loaded and trajectory still not found
+        if (!isLoading && trajectoryData.length > 0) {
+          window.history.replaceState({}, "", "/")
+          setHasProcessedUrlParam(true)
+        }
       }
+    } else {
+      // No trajectory parameter, mark as processed
+      setHasProcessedUrlParam(true)
     }
-  }, [isLoading, trajectoryData, setSelectedPerson])
+  }, [isLoading, trajectoryData, setSelectedPerson, hasProcessedUrlParam])
 
   useEffect(() => {
     if (typeof window === "undefined") return
