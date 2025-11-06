@@ -28,6 +28,23 @@ type TooltipState =
       progressionPercentages?: { beforeToJobtrek: number; jobtrekToFinal: number }
     }
 
+const hookCounters = {
+  handleHover: 0,
+  handleClick: 0,
+  setHoveredTrajectoryId: 0,
+}
+
+const hookStartTime = Date.now()
+
+function logHookCounter(name: string, count: number) {
+  const elapsed = ((Date.now() - hookStartTime) / 1000).toFixed(1)
+  console.log(`[v0 HOOK DIAGNOSTIC] ${name} #${count} at ${elapsed}s`)
+
+  if (count > 100) {
+    console.warn(`[v0 HOOK WARNING] ⚠️ ${name} has been called ${count} times! Possible infinite loop!`)
+  }
+}
+
 export function useChartInteractions(trajectories: LifeTrajectory[], chartData: any) {
   const chartRef = useRef<ChartJS<"line"> | null>(null)
   const [hoveredTrajectoryId, setHoveredTrajectoryId] = useState<string | null>(null)
@@ -215,6 +232,11 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
 
   const handleHover = useCallback(
     (event: any, activeElements: any, chart: ChartJS<"line">) => {
+      hookCounters.handleHover++
+      if (hookCounters.handleHover % 10 === 0) {
+        logHookCounter("handleHover", hookCounters.handleHover)
+      }
+
       if (!chart || !event.native) return
 
       const now = Date.now()
@@ -253,6 +275,13 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
 
         const jobtrekToFinalPercentage = calculateJobtrekToFinalProgression(trajectories)
 
+        if (hoveredTrajectoryId !== "progression") {
+          hookCounters.setHoveredTrajectoryId++
+          console.log(
+            `[v0 HOOK DIAGNOSTIC] setHoveredTrajectoryId to "progression" (call #${hookCounters.setHoveredTrajectoryId})`,
+          )
+        }
+
         setHoveredTrajectoryId("progression")
         setTooltipState({
           visible: true,
@@ -276,6 +305,13 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
 
         if (averageDatasetIndex !== -1) {
           updateChartHighlight(chart, [{ datasetIndex: averageDatasetIndex, index: 0 }])
+        }
+
+        if (hoveredTrajectoryId !== "average") {
+          hookCounters.setHoveredTrajectoryId++
+          console.log(
+            `[v0 HOOK DIAGNOSTIC] setHoveredTrajectoryId to "average" (call #${hookCounters.setHoveredTrajectoryId})`,
+          )
         }
 
         setHoveredTrajectoryId("average")
@@ -314,6 +350,13 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
             startYear,
           }
 
+          if (hoveredTrajectoryId !== closestTrajectoryId) {
+            hookCounters.setHoveredTrajectoryId++
+            console.log(
+              `[v0 HOOK DIAGNOSTIC] setHoveredTrajectoryId to "${closestTrajectoryId}" (call #${hookCounters.setHoveredTrajectoryId})`,
+            )
+          }
+
           setHoveredTrajectoryId(closestTrajectoryId)
           setTooltipState({
             visible: true,
@@ -322,6 +365,13 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
             trajectory: enhancedTrajectoryData,
           })
         } else {
+          if (hoveredTrajectoryId !== closestTrajectoryId) {
+            hookCounters.setHoveredTrajectoryId++
+            console.log(
+              `[v0 HOOK DIAGNOSTIC] setHoveredTrajectoryId to "${closestTrajectoryId}" (call #${hookCounters.setHoveredTrajectoryId})`,
+            )
+          }
+
           setHoveredTrajectoryId(closestTrajectoryId)
           setTooltipState({
             visible: false,
@@ -336,6 +386,13 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
       } else {
         updateChartHighlight(chart, [])
 
+        if (hoveredTrajectoryId !== null) {
+          hookCounters.setHoveredTrajectoryId++
+          console.log(
+            `[v0 HOOK DIAGNOSTIC] setHoveredTrajectoryId to null (call #${hookCounters.setHoveredTrajectoryId})`,
+          )
+        }
+
         setHoveredTrajectoryId(null)
         setTooltipState({ visible: false, position: { x: 0, y: 0 } })
         setIsHoveringLine(false)
@@ -344,17 +401,19 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
         }
       }
     },
-    [isPanMode, chartData, trajectories, determineTrajectoryType, updateChartHighlight],
+    [isPanMode, chartData, trajectories, determineTrajectoryType, updateChartHighlight, hoveredTrajectoryId],
   )
 
   const handleClick = useCallback(
     (event: any, activeElements: any) => {
+      hookCounters.handleClick++
+      logHookCounter("handleClick", hookCounters.handleClick)
+
       if (hoveredTrajectoryId) {
         const originalTrajectory = trajectories.find((t) => t.id === hoveredTrajectoryId)
 
         if (originalTrajectory) {
           setSelectedPerson(originalTrajectory)
-          // Update URL with trajectory code
           if (typeof window !== "undefined") {
             window.history.pushState({}, "", `/?trajectory=${originalTrajectory.userCode}`)
           }
@@ -370,7 +429,6 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
 
             if (originalTrajectory) {
               setSelectedPerson(originalTrajectory)
-              // Update URL with trajectory code
               if (typeof window !== "undefined") {
                 window.history.pushState({}, "", `/?trajectory=${originalTrajectory.userCode}`)
               }

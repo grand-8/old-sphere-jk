@@ -249,17 +249,48 @@ function AverageTooltip({
   )
 }
 
+const renderCounters = {
+  improvementPercentage: 0,
+  chartData: 0,
+  options: 0,
+  hoveredLineIdEffect: 0,
+  component: 0,
+}
+
+const startTime = Date.now()
+
+function logCounter(name: string, count: number) {
+  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
+  console.log(`[v0 LINEAR DIAGNOSTIC] ${name} #${count} at ${elapsed}s`)
+
+  if (count > 50) {
+    console.warn(`[v0 LINEAR WARNING] ⚠️ ${name} has been called ${count} times! Possible infinite loop!`)
+  }
+}
+
 export function LinearChart({ trajectories }: LinearChartProps) {
   const [isThreePointView, setIsThreePointView] = useState(true)
   const [hoveredLineId, setHoveredLineId] = useState<string | null>(null)
   const [showStatistics, setShowStatistics] = useState(false)
 
+  renderCounters.component++
+  console.log(`[v0 LINEAR DIAGNOSTIC] Component render #${renderCounters.component}`)
+
   const improvementPercentage = React.useMemo(() => {
+    renderCounters.improvementPercentage++
+    logCounter("improvementPercentage useMemo", renderCounters.improvementPercentage)
+
     if (!trajectories || trajectories.length === 0) return 100
     return calculateJobtrekToFinalProgression(trajectories)
   }, [trajectories])
 
   const chartData = React.useMemo(() => {
+    renderCounters.chartData++
+    logCounter("chartData useMemo", renderCounters.chartData)
+    console.log(
+      `[v0 LINEAR DIAGNOSTIC] chartData dependencies - trajectories: ${trajectories.length}, isThreePointView: ${isThreePointView}, hoveredLineId: ${hoveredLineId}`,
+    )
+
     if (!trajectories || trajectories.length === 0) {
       return { labels: [], datasets: [] }
     }
@@ -305,6 +336,10 @@ export function LinearChart({ trajectories }: LinearChartProps) {
   } = useChartInteractions(trajectories, chartData)
 
   useEffect(() => {
+    renderCounters.hoveredLineIdEffect++
+    logCounter("hoveredLineId useEffect", renderCounters.hoveredLineIdEffect)
+    console.log(`[v0 LINEAR DIAGNOSTIC] hoveredTrajectory changed from ${hoveredLineId} to ${hoveredTrajectory}`)
+
     setHoveredLineId(hoveredTrajectory)
   }, [hoveredTrajectory])
 
@@ -355,6 +390,12 @@ export function LinearChart({ trajectories }: LinearChartProps) {
   )
 
   const options: any = React.useMemo(() => {
+    renderCounters.options++
+    logCounter("options useMemo", renderCounters.options)
+    console.log(
+      `[v0 LINEAR DIAGNOSTIC] options dependencies - isThreePointView: ${isThreePointView}, zoomLevel: ${zoomLevel}, improvementPercentage: ${improvementPercentage}`,
+    )
+
     const dynamicScales = getDynamicChartScales(improvementPercentage)
 
     console.log("[v0] DYNAMIC_SCALES_DEBUG - Improvement percentage:", improvementPercentage + "%")
@@ -468,6 +509,22 @@ export function LinearChart({ trajectories }: LinearChartProps) {
 
   return (
     <div className="w-full h-full bg-transparent relative pb-16 pr-8">
+      <div className="fixed top-20 left-4 z-50 bg-black/80 text-white p-3 rounded-lg text-xs font-mono border border-white/20">
+        <div className="font-bold mb-2">Diagnostic Panel</div>
+        <div>Component renders: {renderCounters.component}</div>
+        <div>improvementPercentage: {renderCounters.improvementPercentage}</div>
+        <div>chartData: {renderCounters.chartData}</div>
+        <div>options: {renderCounters.options}</div>
+        <div>hoveredLineId effect: {renderCounters.hoveredLineIdEffect}</div>
+        <div className="mt-2 pt-2 border-t border-white/20">
+          <div>hoveredLineId: {hoveredLineId || "null"}</div>
+          <div>hoveredTrajectory: {hoveredTrajectory || "null"}</div>
+        </div>
+        {(renderCounters.chartData > 50 || renderCounters.options > 50) && (
+          <div className="mt-2 pt-2 border-t border-red-500 text-red-400 font-bold">⚠️ INFINITE LOOP DETECTED!</div>
+        )}
+      </div>
+
       <div
         className="fixed z-50 pointer-events-none"
         style={{
