@@ -52,7 +52,20 @@ export default function GradientOutlineSphere() {
     refreshData,
     isIntroAnimationPlaying,
     setIsIntroAnimationPlaying,
+    selectedPerson,
+    setSelectedPerson,
   } = useLifeTrajectoryStore()
+
+  useEffect(() => {
+    console.log("[v0] Store selectedPerson changed:", selectedPerson?.userCode || null)
+    if (selectedPerson && selectedPerson !== selectedTrajectory) {
+      console.log("[v0] Syncing local selectedTrajectory with store selectedPerson")
+      setSelectedTrajectory(selectedPerson)
+    } else if (!selectedPerson && selectedTrajectory) {
+      console.log("[v0] Clearing local selectedTrajectory")
+      setSelectedTrajectory(null)
+    }
+  }, [selectedPerson, selectedTrajectory])
 
   // Hooks de gestion de la scène 3D
   const threeScene = useThreeScene(containerRef)
@@ -74,17 +87,22 @@ export default function GradientOutlineSphere() {
   )
   const { resetHighlight } = mouseEvents
 
-  const handleSetSelectedTrajectory = useCallback((trajectory: LifeTrajectory | null) => {
-    setSelectedTrajectory(trajectory)
+  const handleSetSelectedTrajectory = useCallback(
+    (trajectory: LifeTrajectory | null) => {
+      console.log("[v0] handleSetSelectedTrajectory called with:", trajectory?.userCode || null)
+      setSelectedTrajectory(trajectory)
+      setSelectedPerson(trajectory)
 
-    if (typeof window !== "undefined") {
-      if (trajectory) {
-        window.history.pushState({}, "", `/?trajectory=${trajectory.userCode}`)
-      } else {
-        window.history.pushState({}, "", "/")
+      if (typeof window !== "undefined") {
+        if (trajectory) {
+          window.history.pushState({}, "", `/?trajectory=${trajectory.userCode}`)
+        } else {
+          window.history.pushState({}, "", "/")
+        }
       }
-    }
-  }, [])
+    },
+    [setSelectedPerson],
+  )
 
   // Hook de gestion des interactions
   const interactionManager = useInteractionManager(

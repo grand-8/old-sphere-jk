@@ -65,7 +65,7 @@ export default function Home() {
       })
 
       if (trajectory) {
-        console.log("[v0] Calling setSelectedPerson with:", trajectory)
+        console.log("[v0] Calling setSelectedPerson with trajectory object")
         setSelectedPerson(trajectory)
         setHasProcessedUrlParam(true)
 
@@ -73,7 +73,9 @@ export default function Home() {
         setTimeout(() => {
           const currentState = useLifeTrajectoryStore.getState()
           console.log("[v0] State after setSelectedPerson:", {
-            selectedPerson: currentState.selectedPerson?.userCode || null,
+            selectedPersonCode: currentState.selectedPerson?.userCode || null,
+            selectedPersonType: typeof currentState.selectedPerson,
+            hasId: currentState.selectedPerson?.id ? "yes" : "no",
           })
         }, 100)
       } else {
