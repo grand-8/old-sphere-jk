@@ -26,26 +26,59 @@ export default function Home() {
   const [hasError, setHasError] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [hasProcessedUrlParam, setHasProcessedUrlParam] = useState(false)
-  const { currentView, isIntroAnimationPlaying, trajectoryData, isLoading, setSelectedPerson } =
+  const { currentView, isIntroAnimationPlaying, trajectoryData, isLoading, setSelectedPerson, selectedPerson } =
     useLifeTrajectoryStore()
 
   useEffect(() => {
+    console.log("[v0] URL Param Effect - State:", {
+      isLoading,
+      trajectoryDataLength: trajectoryData.length,
+      hasProcessedUrlParam,
+      selectedPerson: selectedPerson?.userCode || null,
+    })
+
     // Wait for data to be loaded and avoid reprocessing
-    if (typeof window === "undefined" || isLoading || trajectoryData.length === 0 || hasProcessedUrlParam) return
+    if (typeof window === "undefined" || isLoading || trajectoryData.length === 0 || hasProcessedUrlParam) {
+      console.log("[v0] Skipping URL processing:", {
+        isServer: typeof window === "undefined",
+        isLoading,
+        noData: trajectoryData.length === 0,
+        alreadyProcessed: hasProcessedUrlParam,
+      })
+      return
+    }
 
     const params = new URLSearchParams(window.location.search)
     const trajectoryCode = params.get("trajectory") || params.get("t")
+
+    console.log("[v0] URL params:", { trajectoryCode, fullURL: window.location.href })
 
     if (trajectoryCode) {
       console.log("[v0] Processing trajectory from URL:", trajectoryCode)
       const trajectory = trajectoryData.find((t) => t.userCode === trajectoryCode)
 
+      console.log("[v0] Trajectory search result:", {
+        found: !!trajectory,
+        trajectoryId: trajectory?.id,
+        trajectoryCode: trajectory?.userCode,
+        totalTrajectories: trajectoryData.length,
+      })
+
       if (trajectory) {
-        console.log("[v0] Opening trajectory from URL:", trajectoryCode)
+        console.log("[v0] Calling setSelectedPerson with:", trajectory)
         setSelectedPerson(trajectory)
         setHasProcessedUrlParam(true)
+
+        // Verify the state was updated
+        setTimeout(() => {
+          const currentState = useLifeTrajectoryStore.getState()
+          console.log("[v0] State after setSelectedPerson:", {
+            selectedPerson: currentState.selectedPerson?.userCode || null,
+          })
+        }, 100)
       } else {
         console.warn("[v0] Trajectory not found:", trajectoryCode)
+        console.log("[v0] Available trajectories:", trajectoryData.map((t) => t.userCode).slice(0, 10))
         // Only clean up URL if data is fully loaded and trajectory still not found
         if (!isLoading && trajectoryData.length > 0) {
           window.history.replaceState({}, "", "/")
@@ -53,10 +86,15 @@ export default function Home() {
         }
       }
     } else {
+      console.log("[v0] No trajectory parameter in URL")
       // No trajectory parameter, mark as processed
       setHasProcessedUrlParam(true)
     }
   }, [isLoading, trajectoryData, setSelectedPerson, hasProcessedUrlParam])
+
+  useEffect(() => {
+    console.log("[v0] selectedPerson changed:", selectedPerson?.userCode || null)
+  }, [selectedPerson])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -64,6 +102,8 @@ export default function Home() {
     const handlePopState = () => {
       const params = new URLSearchParams(window.location.search)
       const trajectoryCode = params.get("trajectory") || params.get("t")
+
+      console.log("[v0] PopState event:", { trajectoryCode })
 
       if (!trajectoryCode) {
         // Close modal when navigating back to root URL
@@ -161,10 +201,13 @@ export default function Home() {
       )}
 
       {process.env.NODE_ENV === "development" && (
-        <div className="absolute top-2 left-2 text-xs text-gray-500 bg-black/50 p-2 rounded">
+        <div className="absolute top-2 left-2 text-xs text-gray-500 bg-black/50 p-2 rounded z-50">
           <div>Mode: {process.env.NODE_ENV}</div>
           <div>Vue: {currentView}</div>
           <div>Mounted: ✅</div>
+          <div>Selected: {selectedPerson?.userCode || "none"}</div>
+          <div>Loading: {isLoading ? "yes" : "no"}</div>
+          <div>Data: {trajectoryData.length}</div>
         </div>
       )}
 
