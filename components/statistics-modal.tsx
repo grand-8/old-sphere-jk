@@ -61,7 +61,7 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
 
   if (!statistics) return null
 
-  const combinedImpactChartOption = {
+  const mistJobtrekChartOption = {
     animation: true,
     animationDuration: 2000,
     animationEasing: "cubicOut",
@@ -73,44 +73,31 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
       textStyle: { color: "#fff" },
       formatter: (params: any) => {
         const labels = ["Avant la mesure", "Début Jobtrek", "Impact final"]
-        const isMist = params.seriesName === "MIST Jobtrek"
-        const measureName = isMist ? "MIST" : "Jobtrekschool"
-
         if (params.dataIndex === 0) {
-          return `Avant la ${measureName} (${params.seriesName})`
+          return `Avant la MISt (MISt Jobtrek)`
         } else if (params.dataIndex === 1) {
-          return `${labels[params.dataIndex]} (${params.seriesName})`
+          return `${labels[params.dataIndex]} (MISt Jobtrek)`
         } else {
-          const jobtrekValue = isMist
-            ? statistics?.impactCharts.mistJobtrek.jobtrekAvg
-            : statistics?.impactCharts.jobtrekSchool.jobtrekAvg
+          const jobtrekValue = statistics?.impactCharts.mistJobtrek.jobtrekAvg
           const progression = jobtrekValue !== 0 ? ((params.value - jobtrekValue) / jobtrekValue) * 100 : 0
           const sign = progression > 0 ? "+" : ""
-          return `${labels[params.dataIndex]} (${params.seriesName})<br/>${sign}${progression.toFixed(1)}% depuis Jobtrek`
+          return `${labels[params.dataIndex]} (MISt Jobtrek)<br/>${sign}${progression.toFixed(1)}% depuis Jobtrek`
         }
       },
-    },
-    legend: {
-      data: ["MIST Jobtrek", "Jobtrekschool"],
-      bottom: "5%",
-      left: "center",
-      textStyle: { color: "#d1d5db", fontSize: 12 },
-      itemWidth: 12,
-      itemHeight: 12,
     },
     grid: {
       left: "10%",
       right: "10%",
-      bottom: "20%",
-      top: "15%",
+      bottom: "15%",
+      top: "10%",
       containLabel: true,
     },
     xAxis: {
       type: "category",
-      data: ["Avant", "Jobtrek", "Après Jobtrek"],
+      data: ["Avant", "Jobtrek", "Après"],
       axisLine: { lineStyle: { color: "#374151" } },
       axisTick: { lineStyle: { color: "#374151" } },
-      axisLabel: { color: "#9ca3af", fontSize: 12 },
+      axisLabel: { color: "#9ca3af", fontSize: 11 },
     },
     yAxis: {
       type: "value",
@@ -125,7 +112,7 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
     },
     series: [
       {
-        name: "MIST Jobtrek",
+        name: "MISt Jobtrek",
         type: "line",
         data: [
           statistics?.impactCharts.mistJobtrek.startAvg || 0,
@@ -138,8 +125,61 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
         symbolSize: 8,
         showSymbol: true,
       },
+    ],
+  }
+
+  const jobtrekSchoolChartOption = {
+    animation: true,
+    animationDuration: 2000,
+    animationEasing: "cubicOut",
+    tooltip: {
+      trigger: "item",
+      backgroundColor: "#1f2937",
+      borderColor: "#374151",
+      borderWidth: 1,
+      textStyle: { color: "#fff" },
+      formatter: (params: any) => {
+        const labels = ["Avant la mesure", "Début Jobtrek", "Impact final"]
+        if (params.dataIndex === 0) {
+          return `Avant la JobtrekSchool (JobtrekSchool)`
+        } else if (params.dataIndex === 1) {
+          return `${labels[params.dataIndex]} (JobtrekSchool)`
+        } else {
+          const jobtrekValue = statistics?.impactCharts.jobtrekSchool.jobtrekAvg
+          const progression = jobtrekValue !== 0 ? ((params.value - jobtrekValue) / jobtrekValue) * 100 : 0
+          const sign = progression > 0 ? "+" : ""
+          return `${labels[params.dataIndex]} (JobtrekSchool)<br/>${sign}${progression.toFixed(1)}% depuis Jobtrek`
+        }
+      },
+    },
+    grid: {
+      left: "10%",
+      right: "10%",
+      bottom: "15%",
+      top: "10%",
+      containLabel: true,
+    },
+    xAxis: {
+      type: "category",
+      data: ["Avant", "Jobtrek", "Après"],
+      axisLine: { lineStyle: { color: "#374151" } },
+      axisTick: { lineStyle: { color: "#374151" } },
+      axisLabel: { color: "#9ca3af", fontSize: 11 },
+    },
+    yAxis: {
+      type: "value",
+      show: true,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { show: false },
+      splitLine: {
+        show: true,
+        lineStyle: { color: "#374151", type: "solid", width: 1 },
+      },
+    },
+    series: [
       {
-        name: "Jobtrekschool",
+        name: "JobtrekSchool",
         type: "line",
         data: [
           statistics?.impactCharts.jobtrekSchool.startAvg || 0,
@@ -287,24 +327,36 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
           </div>
 
           <div className="mb-6">
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
-              <div className="text-gray-400 text-sm mb-4">Impact Jobtrek par type de mesure</div>
-              <div className="flex items-center space-x-4 mb-3">
-                <div className="flex items-center space-x-2">
+            <div className="text-gray-400 text-sm mb-4">Impact Jobtrek par type de mesure</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* MISt Jobtrek Chart */}
+              <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                <div className="flex items-center space-x-2 mb-3">
                   <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                  <div className="text-white text-sm font-medium">MIST Jobtrek</div>
+                  <div className="text-white text-sm font-medium">MISt Jobtrek</div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                  <div className="text-white text-sm font-medium">Jobtrekschool</div>
+                <div className="h-48">
+                  <ReactECharts
+                    option={mistJobtrekChartOption}
+                    style={{ height: "100%", width: "100%" }}
+                    opts={{ renderer: "svg" }}
+                  />
                 </div>
               </div>
-              <div className="h-48">
-                <ReactECharts
-                  option={combinedImpactChartOption}
-                  style={{ height: "100%", width: "100%" }}
-                  opts={{ renderer: "svg" }}
-                />
+
+              {/* JobtrekSchool Chart */}
+              <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                <div className="flex items-center space-x-2 mb-3">
+                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                  <div className="text-white text-sm font-medium">JobtrekSchool</div>
+                </div>
+                <div className="h-48">
+                  <ReactECharts
+                    option={jobtrekSchoolChartOption}
+                    style={{ height: "100%", width: "100%" }}
+                    opts={{ renderer: "svg" }}
+                  />
+                </div>
               </div>
             </div>
           </div>
