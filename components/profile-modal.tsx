@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { X } from "lucide-react"
+import { X, Mountain, MapPin, TrendingUp, Hash } from "lucide-react"
 import type { LifeTrajectory } from "@/lib/data-service"
 import {
   Chart as ChartJS,
@@ -23,6 +23,30 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 interface ProfileModalProps {
   trajectory: LifeTrajectory | null
   onClose: () => void
+}
+
+function calculatePeakStats(trajectory: LifeTrajectory) {
+  if (!trajectory.points || trajectory.points.length === 0) {
+    return {
+      maxHeight: 0,
+      avgHeight: 0,
+      prominence: 0,
+      dataPoints: 0,
+    }
+  }
+
+  const scores = trajectory.points.map((p) => p.cumulativeScore)
+  const maxScore = Math.max(...scores)
+  const avgScore = scores.reduce((sum, score) => sum + score, 0) / scores.length
+  const minScore = Math.min(...scores)
+  const prominence = maxScore - minScore
+
+  return {
+    maxHeight: maxScore,
+    avgHeight: Math.round(avgScore * 10) / 10,
+    prominence: Math.round(prominence * 10) / 10,
+    dataPoints: trajectory.points.length,
+  }
 }
 
 export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
@@ -74,6 +98,8 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
   }, [])
 
   if (!trajectory) return null
+
+  const peakStats = calculatePeakStats(trajectory)
 
   const getCategoryColor = () => {
     switch (trajectory.category) {
@@ -369,6 +395,43 @@ export function ProfileModal({ trajectory, onClose }: ProfileModalProps) {
         </div>
 
         <div className="p-6">
+          <div className="mb-6 bg-gradient-to-br from-blue-900/30 to-teal-900/30 rounded-lg p-4 border border-blue-800/50">
+            <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+              <Mountain className="h-5 w-5 text-blue-400" />
+              Informations du Pic
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-black/30 rounded-lg p-3 border border-gray-700/50">
+                <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
+                  <TrendingUp className="h-3 w-3" />
+                  Hauteur Max
+                </div>
+                <div className="text-xl font-bold text-white">{peakStats.maxHeight}</div>
+              </div>
+              <div className="bg-black/30 rounded-lg p-3 border border-gray-700/50">
+                <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
+                  <Mountain className="h-3 w-3" />
+                  Hauteur Moy
+                </div>
+                <div className="text-xl font-bold text-white">{peakStats.avgHeight}</div>
+              </div>
+              <div className="bg-black/30 rounded-lg p-3 border border-gray-700/50">
+                <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
+                  <MapPin className="h-3 w-3" />
+                  Prominence
+                </div>
+                <div className="text-xl font-bold text-teal-400">{peakStats.prominence}</div>
+              </div>
+              <div className="bg-black/30 rounded-lg p-3 border border-gray-700/50">
+                <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
+                  <Hash className="h-3 w-3" />
+                  Points de Données
+                </div>
+                <div className="text-xl font-bold text-blue-400">{peakStats.dataPoints}</div>
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 flex flex-col justify-start items-center">
               <div className="text-gray-400 text-sm mb-2">Visualisation 3D</div>

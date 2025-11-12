@@ -1,27 +1,20 @@
 "use client"
 
 import type React from "react"
-
+import { useState, useCallback, useMemo } from "react"
 import { useLifeTrajectoryStore } from "@/lib/store"
 import { LinearChart } from "@/components/linear/linear-chart"
 import { ProfileModal } from "@/components/profile-modal"
 import { StatisticsModal } from "@/components/statistics-modal"
 import { UIControls } from "@/components/ui-controls"
 import { AlertTriangle } from "lucide-react"
-import { useState, useCallback } from "react"
 import { calculateJobtrekStatistics } from "@/lib/statistics-calculator"
 
-/**
- * Container component for the 2D linear chart visualization
- * Integrates LinearChart with the same UI controls and modals as SphereView
- */
 export function LinearView() {
   const { trajectoryData, filteredTrajectories, isLoading, error, refreshData, selectedPerson, setSelectedPerson } =
     useLifeTrajectoryStore()
 
   const [showStatistics, setShowStatistics] = useState(false)
-
-  console.log("[v0] Rendering LinearView with", filteredTrajectories.length, "trajectories")
 
   const handleUIEvent = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -52,9 +45,14 @@ export function LinearView() {
     setShowStatistics(false)
   }, [])
 
-  const statistics = showStatistics ? calculateJobtrekStatistics(trajectoryData) : null
+  const statistics = useMemo(() => {
+    if (!showStatistics) return null
+    return calculateJobtrekStatistics(trajectoryData)
+  }, [showStatistics, trajectoryData])
 
-  const displayTrajectories = filteredTrajectories.length > 0 ? filteredTrajectories : trajectoryData
+  const displayTrajectories = useMemo(() => {
+    return filteredTrajectories.length > 0 ? filteredTrajectories : trajectoryData
+  }, [filteredTrajectories, trajectoryData])
 
   if (isLoading) {
     return (

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useMemo } from "react"
 import Chart from "chart.js/auto"
 import { Line } from "react-chartjs-2"
 import type { LifeTrajectory } from "@/lib/data-service"
@@ -19,6 +19,14 @@ import {
 } from "@/utils/linear/chart-data-transform"
 import { StatisticsModal } from "@/components/statistics-modal"
 import { calculateJobtrekStatistics } from "@/lib/statistics-calculator"
+
+const diagnosticCounters = {
+  renders: 0,
+  chartDataCalcs: 0,
+  optionsCalcs: 0,
+  gradientCreations: 0,
+  lastReset: Date.now(),
+}
 
 const customLabelAlignmentPlugin = {
   id: "customLabelAlignment",
@@ -51,16 +59,25 @@ const customLabelAlignmentPlugin = {
 
 Chart.register(customLabelAlignmentPlugin)
 
-function createPeakInspiredGradient(
+const gradientCache = new Map<string, CanvasGradient>()
+
+const createPeakInspiredGradient = (
   ctx: CanvasRenderingContext2D,
   chartArea: any,
   data: (number | null)[],
+  trajectoryId: string,
   isHighlighted = false,
-) {
+) => {
+  const cacheKey = `${trajectoryId}-${isHighlighted}`
+  if (gradientCache.has(cacheKey)) {
+    return gradientCache.get(cacheKey)!
+  }
+
   if (isHighlighted) {
     const gradient = ctx.createLinearGradient(chartArea.left, 0, chartArea.right, 0)
     gradient.addColorStop(0, applyPeakFinesse(PEAK_COLORS.highlight, 0))
     gradient.addColorStop(1, applyPeakFinesse(PEAK_COLORS.highlight, 0))
+    gradientCache.set(cacheKey, gradient)
     return gradient
   }
 
@@ -105,6 +122,7 @@ function createPeakInspiredGradient(
     const neutralColor = applyPeakFinesse(PEAK_COLORS.blue, 0.3)
     gradient.addColorStop(0, neutralColor)
     gradient.addColorStop(1, neutralColor)
+    gradientCache.set(cacheKey, gradient)
     return gradient
   }
 
@@ -127,11 +145,8 @@ function createPeakInspiredGradient(
     }
   })
 
+  gradientCache.set(cacheKey, gradient)
   return gradient
-}
-
-interface LinearChartProps {
-  trajectories: LifeTrajectory[]
 }
 
 interface AverageTooltipProps {
@@ -249,23 +264,8 @@ function AverageTooltip({
   )
 }
 
-const renderCounters = {
-  improvementPercentage: 0,
-  chartData: 0,
-  options: 0,
-  hoveredLineIdEffect: 0,
-  component: 0,
-}
-
-const startTime = Date.now()
-
-function logCounter(name: string, count: number) {
-  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
-  console.log(`[v0 LINEAR DIAGNOSTIC] ${name} #${count} at ${elapsed}s`)
-
-  if (count > 50) {
-    console.warn(`[v0 LINEAR WARNING] ⚠️ ${name} has been called ${count} times! Possible infinite loop!`)
-  }
+interface LinearChartProps {
+  trajectories: LifeTrajectory[]
 }
 
 export function LinearChart({ trajectories }: LinearChartProps) {
@@ -273,24 +273,12 @@ export function LinearChart({ trajectories }: LinearChartProps) {
   const [hoveredLineId, setHoveredLineId] = useState<string | null>(null)
   const [showStatistics, setShowStatistics] = useState(false)
 
-  renderCounters.component++
-  console.log(`[v0 LINEAR DIAGNOSTIC] Component render #${renderCounters.component}`)
-
-  const improvementPercentage = React.useMemo(() => {
-    renderCounters.improvementPercentage++
-    logCounter("improvementPercentage useMemo", renderCounters.improvementPercentage)
-
+  const improvementPercentage = useMemo(() => {
     if (!trajectories || trajectories.length === 0) return 100
     return calculateJobtrekToFinalProgression(trajectories)
   }, [trajectories])
 
-  const chartData = React.useMemo(() => {
-    renderCounters.chartData++
-    logCounter("chartData useMemo", renderCounters.chartData)
-    console.log(
-      `[v0 LINEAR DIAGNOSTIC] chartData dependencies - trajectories: ${trajectories.length}, isThreePointView: ${isThreePointView}, hoveredLineId: ${hoveredLineId}`,
-    )
-
+  const chartData = useMemo(() => {
     if (!trajectories || trajectories.length === 0) {
       return { labels: [], datasets: [] }
     }
@@ -298,18 +286,17 @@ export function LinearChart({ trajectories }: LinearChartProps) {
     const { sortedYears, processedTrajectories } = processTrajectories(trajectories, isThreePointView)
 
     const datasets = processedTrajectories.map((trajectory) => {
-      const isHighlighted = hoveredLineId === trajectory.id
-      return createTrajectoryDataset(trajectory, sortedYears, isThreePointView, hoveredLineId, isHighlighted)
+      return createTrajectoryDataset(trajectory, sortedYears, isThreePointView, null, false)
     })
 
     if (trajectories.length > 1) {
       const averageData = calculateAverageData(sortedYears, processedTrajectories, trajectories, isThreePointView)
       const progressionData = calculateProgressionData(sortedYears, averageData, trajectories)
 
-      datasets.push(createAverageDataset(averageData, hoveredLineId, isThreePointView, trajectories))
+      datasets.push(createAverageDataset(averageData, null, isThreePointView, trajectories))
 
       if (isThreePointView) {
-        datasets.push(createProgressionDataset(progressionData, hoveredLineId, averageData))
+        datasets.push(createProgressionDataset(progressionData, null, averageData))
       }
     }
 
@@ -317,7 +304,7 @@ export function LinearChart({ trajectories }: LinearChartProps) {
       labels: sortedYears,
       datasets,
     }
-  }, [trajectories, isThreePointView, hoveredLineId])
+  }, [trajectories, isThreePointView]) // Only recalculate when trajectories or view changes
 
   const {
     chartRef,
@@ -336,12 +323,36 @@ export function LinearChart({ trajectories }: LinearChartProps) {
   } = useChartInteractions(trajectories, chartData)
 
   useEffect(() => {
-    renderCounters.hoveredLineIdEffect++
-    logCounter("hoveredLineId useEffect", renderCounters.hoveredLineIdEffect)
-    console.log(`[v0 LINEAR DIAGNOSTIC] hoveredTrajectory changed from ${hoveredLineId} to ${hoveredTrajectory}`)
-
     setHoveredLineId(hoveredTrajectory)
   }, [hoveredTrajectory])
+
+  const hoverPlugin = useMemo(
+    () => ({
+      id: "hoverHighlight",
+      afterDatasetsDraw: (chart: any) => {
+        if (!hoveredLineId) return
+
+        const datasetIndex = chart.data.datasets.findIndex((ds: any) => ds.trajectoryId === hoveredLineId)
+
+        if (datasetIndex >= 0 && datasetIndex < chart.data.datasets.length) {
+          const meta = chart.getDatasetMeta(datasetIndex)
+          if (meta && meta.dataset) {
+            meta.dataset.options.borderWidth = 4
+          }
+        }
+
+        chart.data.datasets.forEach((ds: any, idx: number) => {
+          if (ds.trajectoryId && ds.trajectoryId !== hoveredLineId) {
+            const meta = chart.getDatasetMeta(idx)
+            if (meta && meta.dataset) {
+              meta.dataset.options.borderWidth = 2
+            }
+          }
+        })
+      },
+    }),
+    [hoveredLineId],
+  )
 
   const handleOpenStatistics = useCallback(() => {
     setShowStatistics(true)
@@ -389,18 +400,8 @@ export function LinearChart({ trajectories }: LinearChartProps) {
     [handleClick, handleOpenStatistics],
   )
 
-  const options: any = React.useMemo(() => {
-    renderCounters.options++
-    logCounter("options useMemo", renderCounters.options)
-    console.log(
-      `[v0 LINEAR DIAGNOSTIC] options dependencies - isThreePointView: ${isThreePointView}, zoomLevel: ${zoomLevel}, improvementPercentage: ${improvementPercentage}`,
-    )
-
+  const options: any = useMemo(() => {
     const dynamicScales = getDynamicChartScales(improvementPercentage)
-
-    console.log("[v0] DYNAMIC_SCALES_DEBUG - Improvement percentage:", improvementPercentage + "%")
-    console.log("[v0] DYNAMIC_SCALES_DEBUG - Dynamic Y1 max:", dynamicScales.y1.max + "%")
-    console.log("[v0] DYNAMIC_SCALES_DEBUG - Dynamic Y1 step size:", dynamicScales.y1.ticks.stepSize)
 
     return {
       responsive: true,
@@ -413,6 +414,9 @@ export function LinearChart({ trajectories }: LinearChartProps) {
       },
       plugins: {
         customLabelAlignment: {
+          enabled: true,
+        },
+        hoverHighlight: {
           enabled: true,
         },
         legend: {
@@ -503,28 +507,19 @@ export function LinearChart({ trajectories }: LinearChartProps) {
       onClick: enhancedHandleClick,
       isThreePointView: isThreePointView,
     }
-  }, [isThreePointView, zoomLevel, handleHover, enhancedHandleClick, improvementPercentage])
+  }, [isThreePointView, zoomLevel, improvementPercentage, handleHover, enhancedHandleClick])
+
+  useEffect(() => {
+    Chart.register(hoverPlugin)
+    return () => {
+      Chart.unregister(hoverPlugin)
+    }
+  }, [hoverPlugin])
 
   const statistics = showStatistics ? calculateJobtrekStatistics(trajectories) : null
 
   return (
     <div className="w-full h-full bg-transparent relative pb-16 pr-8">
-      <div className="fixed top-20 left-4 z-50 bg-black/80 text-white p-3 rounded-lg text-xs font-mono border border-white/20">
-        <div className="font-bold mb-2">Diagnostic Panel</div>
-        <div>Component renders: {renderCounters.component}</div>
-        <div>improvementPercentage: {renderCounters.improvementPercentage}</div>
-        <div>chartData: {renderCounters.chartData}</div>
-        <div>options: {renderCounters.options}</div>
-        <div>hoveredLineId effect: {renderCounters.hoveredLineIdEffect}</div>
-        <div className="mt-2 pt-2 border-t border-white/20">
-          <div>hoveredLineId: {hoveredLineId || "null"}</div>
-          <div>hoveredTrajectory: {hoveredTrajectory || "null"}</div>
-        </div>
-        {(renderCounters.chartData > 50 || renderCounters.options > 50) && (
-          <div className="mt-2 pt-2 border-t border-red-500 text-red-400 font-bold">⚠️ INFINITE LOOP DETECTED!</div>
-        )}
-      </div>
-
       <div
         className="fixed z-50 pointer-events-none"
         style={{
@@ -600,10 +595,6 @@ export function LinearChart({ trajectories }: LinearChartProps) {
         >
           {isThreePointView ? "Vue complète" : "Vue simplifiée"}
         </button>
-      </div>
-
-      <div className="absolute bottom-4 left-4 text-white/60 text-xs">
-        <br />
       </div>
 
       <Line ref={chartRef} data={chartData} options={options} />

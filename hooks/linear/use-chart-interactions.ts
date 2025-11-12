@@ -28,23 +28,6 @@ type TooltipState =
       progressionPercentages?: { beforeToJobtrek: number; jobtrekToFinal: number }
     }
 
-const hookCounters = {
-  handleHover: 0,
-  handleClick: 0,
-  setHoveredTrajectoryId: 0,
-}
-
-const hookStartTime = Date.now()
-
-function logHookCounter(name: string, count: number) {
-  const elapsed = ((Date.now() - hookStartTime) / 1000).toFixed(1)
-  console.log(`[v0 HOOK DIAGNOSTIC] ${name} #${count} at ${elapsed}s`)
-
-  if (count > 100) {
-    console.warn(`[v0 HOOK WARNING] ⚠️ ${name} has been called ${count} times! Possible infinite loop!`)
-  }
-}
-
 export function useChartInteractions(trajectories: LifeTrajectory[], chartData: any) {
   const chartRef = useRef<ChartJS<"line"> | null>(null)
   const [hoveredTrajectoryId, setHoveredTrajectoryId] = useState<string | null>(null)
@@ -68,46 +51,10 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
       event.preventDefault()
       const chart = chartRef.current
 
-      console.log("[v0] SPACEBAR_DOWN_START - Event triggered")
-      console.log("[v0] SPACEBAR_DOWN_CHART_STATE - Chart exists:", !!chart)
-      console.log("[v0] SPACEBAR_DOWN_ZOOM_STATE - isZoomedOrPanned:", chart.isZoomedOrPanned?.() || false)
-
-      if (chart.scales?.x && chart.scales?.y) {
-        console.log("[v0] SPACEBAR_DOWN_SCALES_BEFORE:")
-        console.log(
-          "  - X Scale - min:",
-          chart.scales.x.min,
-          "max:",
-          chart.scales.x.max,
-          "start:",
-          chart.scales.x.start,
-          "end:",
-          chart.scales.x.end,
-        )
-        console.log(
-          "  - Y Scale - min:",
-          chart.scales.y.min,
-          "max:",
-          chart.scales.y.max,
-          "start:",
-          chart.scales.y.start,
-          "end:",
-          chart.scales.y.end,
-        )
-      }
-
-      setIsPanMode(true)
-      console.log("[v0] SPACEBAR_DOWN_STATE - Set isPanMode to true")
-
       if (chart.options.plugins?.zoom?.pan) {
-        console.log("[v0] SPACEBAR_DOWN_PAN_BEFORE - Pan enabled:", chart.options.plugins.zoom.pan.enabled)
         chart.options.plugins.zoom.pan.enabled = true
-        console.log("[v0] SPACEBAR_DOWN_PAN_AFTER - Pan enabled:", chart.options.plugins.zoom.pan.enabled)
         chart.canvas.style.cursor = "grab"
-        console.log("[v0] SPACEBAR_DOWN_CURSOR - Set cursor to grab")
       }
-
-      console.log("[v0] SPACEBAR_DOWN_END - Spacebar press handling complete")
     }
   }, [])
 
@@ -116,73 +63,10 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
       if (event.code === "Space" && chartRef.current) {
         const chart = chartRef.current
 
-        console.log("[v0] SPACEBAR_UP_START - Event triggered")
-        console.log("[v0] SPACEBAR_UP_CHART_STATE - Chart exists:", !!chart)
-        console.log("[v0] SPACEBAR_UP_ZOOM_STATE_BEFORE - isZoomedOrPanned:", chart.isZoomedOrPanned?.() || false)
-
-        if (chart.scales?.x && chart.scales?.y) {
-          console.log("[v0] SPACEBAR_UP_SCALES_BEFORE:")
-          console.log(
-            "  - X Scale - min:",
-            chart.scales.x.min,
-            "max:",
-            chart.scales.x.max,
-            "start:",
-            chart.scales.x.start,
-            "end:",
-            chart.scales.x.end,
-          )
-          console.log(
-            "  - Y Scale - min:",
-            chart.scales.y.min,
-            "max:",
-            chart.scales.y.max,
-            "start:",
-            chart.scales.y.start,
-            "end:",
-            chart.scales.y.end,
-          )
-        }
-
-        setIsPanMode(false)
-        console.log("[v0] SPACEBAR_UP_STATE - Set isPanMode to false")
-
         if (chart.options.plugins?.zoom?.pan) {
-          console.log("[v0] SPACEBAR_UP_PAN_BEFORE - Pan enabled:", chart.options.plugins.zoom.pan.enabled)
-          console.log("[v0] SPACEBAR_UP_HOVER_STATE - isHoveringLine:", isHoveringLine)
-          chart.options.plugins.zoom.pan.enabled = !isHoveringLine
-          console.log("[v0] SPACEBAR_UP_PAN_AFTER - Pan enabled:", chart.options.plugins.zoom.pan.enabled)
+          chart.options.plugins.zoom.pan.enabled = false
           chart.canvas.style.cursor = "default"
-          console.log("[v0] SPACEBAR_UP_CURSOR - Set cursor to default")
         }
-
-        console.log("[v0] SPACEBAR_UP_NO_UPDATE - Skipping chart.update() to preserve zoom state")
-
-        if (chart.scales?.x && chart.scales?.y) {
-          console.log("[v0] SPACEBAR_UP_SCALES_FINAL:")
-          console.log(
-            "  - X Scale - min:",
-            chart.scales.x.min,
-            "max:",
-            chart.scales.x.max,
-            "start:",
-            chart.scales.x.start,
-            "end:",
-            chart.scales.x.end,
-          )
-          console.log(
-            "  - Y Scale - min:",
-            chart.scales.y.min,
-            "max:",
-            chart.scales.y.max,
-            "start:",
-            chart.scales.y.start,
-            "end:",
-            chart.scales.y.end,
-          )
-        }
-
-        console.log("[v0] SPACEBAR_UP_END - Spacebar release handling complete")
       }
     },
     [isHoveringLine],
@@ -224,19 +108,13 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
 
   const updateChartHighlight = useCallback((chart: ChartJS<"line">, activeElements: any[] = []) => {
     chart.setActiveElements(activeElements)
-    // chart.update("none") // REMOVED - this was causing the infinite loop
   }, [])
 
   const lastHoverTime = useRef(0)
-  const HOVER_THROTTLE_MS = 50 // Increased from 16ms to 50ms for better performance
+  const HOVER_THROTTLE_MS = 50
 
   const handleHover = useCallback(
     (event: any, activeElements: any, chart: ChartJS<"line">) => {
-      hookCounters.handleHover++
-      if (hookCounters.handleHover % 10 === 0) {
-        logHookCounter("handleHover", hookCounters.handleHover)
-      }
-
       if (!chart || !event.native) return
 
       const now = Date.now()
@@ -275,13 +153,6 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
 
         const jobtrekToFinalPercentage = calculateJobtrekToFinalProgression(trajectories)
 
-        if (hoveredTrajectoryId !== "progression") {
-          hookCounters.setHoveredTrajectoryId++
-          console.log(
-            `[v0 HOOK DIAGNOSTIC] setHoveredTrajectoryId to "progression" (call #${hookCounters.setHoveredTrajectoryId})`,
-          )
-        }
-
         setHoveredTrajectoryId("progression")
         setTooltipState({
           visible: true,
@@ -305,13 +176,6 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
 
         if (averageDatasetIndex !== -1) {
           updateChartHighlight(chart, [{ datasetIndex: averageDatasetIndex, index: 0 }])
-        }
-
-        if (hoveredTrajectoryId !== "average") {
-          hookCounters.setHoveredTrajectoryId++
-          console.log(
-            `[v0 HOOK DIAGNOSTIC] setHoveredTrajectoryId to "average" (call #${hookCounters.setHoveredTrajectoryId})`,
-          )
         }
 
         setHoveredTrajectoryId("average")
@@ -350,13 +214,6 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
             startYear,
           }
 
-          if (hoveredTrajectoryId !== closestTrajectoryId) {
-            hookCounters.setHoveredTrajectoryId++
-            console.log(
-              `[v0 HOOK DIAGNOSTIC] setHoveredTrajectoryId to "${closestTrajectoryId}" (call #${hookCounters.setHoveredTrajectoryId})`,
-            )
-          }
-
           setHoveredTrajectoryId(closestTrajectoryId)
           setTooltipState({
             visible: true,
@@ -365,18 +222,8 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
             trajectory: enhancedTrajectoryData,
           })
         } else {
-          if (hoveredTrajectoryId !== closestTrajectoryId) {
-            hookCounters.setHoveredTrajectoryId++
-            console.log(
-              `[v0 HOOK DIAGNOSTIC] setHoveredTrajectoryId to "${closestTrajectoryId}" (call #${hookCounters.setHoveredTrajectoryId})`,
-            )
-          }
-
           setHoveredTrajectoryId(closestTrajectoryId)
-          setTooltipState({
-            visible: false,
-            position: { x: clientX, y: clientY },
-          })
+          setTooltipState({ visible: false, position: { x: clientX, y: clientY } })
         }
 
         setIsHoveringLine(true)
@@ -386,13 +233,6 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
       } else {
         updateChartHighlight(chart, [])
 
-        if (hoveredTrajectoryId !== null) {
-          hookCounters.setHoveredTrajectoryId++
-          console.log(
-            `[v0 HOOK DIAGNOSTIC] setHoveredTrajectoryId to null (call #${hookCounters.setHoveredTrajectoryId})`,
-          )
-        }
-
         setHoveredTrajectoryId(null)
         setTooltipState({ visible: false, position: { x: 0, y: 0 } })
         setIsHoveringLine(false)
@@ -401,14 +241,11 @@ export function useChartInteractions(trajectories: LifeTrajectory[], chartData: 
         }
       }
     },
-    [isPanMode, chartData, trajectories, determineTrajectoryType, updateChartHighlight, hoveredTrajectoryId],
+    [isPanMode, chartData, trajectories, determineTrajectoryType, updateChartHighlight],
   )
 
   const handleClick = useCallback(
     (event: any, activeElements: any) => {
-      hookCounters.handleClick++
-      logHookCounter("handleClick", hookCounters.handleClick)
-
       if (hoveredTrajectoryId) {
         const originalTrajectory = trajectories.find((t) => t.id === hoveredTrajectoryId)
 
