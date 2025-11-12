@@ -5,6 +5,15 @@ import { dataService } from "./data-service"
 
 export type ViewType = "sphere" | "linear"
 
+interface CameraPosition {
+  x: number
+  y: number
+  z: number
+  targetX: number
+  targetY: number
+  targetZ: number
+}
+
 interface LifeTrajectoryState {
   // États existants
   selectedPerson: LifeTrajectory | null
@@ -27,8 +36,8 @@ interface LifeTrajectoryState {
   isIntroAnimationPlaying: boolean
   setIsIntroAnimationPlaying: (playing: boolean) => void
 
-  loadData: () => Promise<void>
-  refreshData: () => Promise<void>
+  sphereCameraPosition: CameraPosition | null
+  setSphereCameraPosition: (position: CameraPosition | null) => void
 }
 
 export const useLifeTrajectoryStore = create<LifeTrajectoryState>((set, get) => ({
@@ -61,6 +70,9 @@ export const useLifeTrajectoryStore = create<LifeTrajectoryState>((set, get) => 
 
   isIntroAnimationPlaying: true,
   setIsIntroAnimationPlaying: (isIntroAnimationPlaying) => set({ isIntroAnimationPlaying }),
+
+  sphereCameraPosition: null,
+  setSphereCameraPosition: (sphereCameraPosition) => set({ sphereCameraPosition }),
 
   loadData: async () => {
     const { searchQuery } = get()

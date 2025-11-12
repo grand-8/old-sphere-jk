@@ -236,7 +236,8 @@ export default function Home() {
         </a>
       </div>
 
-      {currentView === "sphere" ? <SphereView /> : <LinearView />}
+      {currentView === "sphere" && <SphereView />}
+      {currentView === "linear" && <LinearView />}
     </main>
   )
 }

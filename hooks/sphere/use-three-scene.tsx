@@ -4,6 +4,7 @@ import type React from "react"
 import { useRef, useEffect, useState } from "react"
 import * as THREE from "three"
 import { OrbitControls } from "three/addons/controls/OrbitControls.js"
+import { useLifeTrajectoryStore } from "@/lib/store"
 
 const COLORS = {
   darkBlue: new THREE.Color("#1a2b4d"),
@@ -30,8 +31,12 @@ export function useThreeScene(containerRef: React.RefObject<HTMLDivElement>): Us
   const [isRendering, setIsRendering] = useState(true)
   const [controlsInitialized, setControlsInitialized] = useState(false)
 
+  const { sphereCameraPosition, setSphereCameraPosition } = useLifeTrajectoryStore()
+
   useEffect(() => {
     if (!containerRef.current || typeof window === "undefined") return
+
+    console.log("[v0] THREE.js scene initializing")
 
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0x000000)
@@ -138,7 +143,13 @@ export function useThreeScene(containerRef: React.RefObject<HTMLDivElement>): Us
     controls.dampingFactor = 0.05
     controlsRef.current = controls
 
-    // Marquer les contrôles comme initialisés
+    if (sphereCameraPosition) {
+      console.log("[v0] Restoring camera position:", sphereCameraPosition)
+      camera.position.set(sphereCameraPosition.x, sphereCameraPosition.y, sphereCameraPosition.z)
+      controls.target.set(sphereCameraPosition.targetX, sphereCameraPosition.targetY, sphereCameraPosition.targetZ)
+      controls.update()
+    }
+
     setControlsInitialized(true)
 
     const animate = () => {
@@ -147,7 +158,6 @@ export function useThreeScene(containerRef: React.RefObject<HTMLDivElement>): Us
       animationFrameRef.current = requestAnimationFrame(animate)
 
       try {
-        // Note: controlsEnabled sera géré dans le composant principal
         if (sphereGroupRef.current) {
           sphereGroupRef.current.rotation.y += 0.001
         }
@@ -178,11 +188,27 @@ export function useThreeScene(containerRef: React.RefObject<HTMLDivElement>): Us
     }
 
     return () => {
+      console.log("[v0] THREE.js cleanup - stopping animation loop")
       setIsRendering(false)
       setControlsInitialized(false)
 
-      if (typeof window !== "undefined") {
-        window.removeEventListener("resize", handleResize)
+      if (cameraRef.current && controlsRef.current) {
+        const pos = cameraRef.current.position
+        const target = controlsRef.current.target
+        setSphereCameraPosition({
+          x: pos.x,
+          y: pos.y,
+          z: pos.z,
+          targetX: target.x,
+          targetY: target.y,
+          targetZ: target.z,
+        })
+        console.log("[v0] Camera position saved for next mount")
+      }
+
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = null
       }
 
       if (containerRef.current && rendererRef.current) {
@@ -217,7 +243,7 @@ export function useThreeScene(containerRef: React.RefObject<HTMLDivElement>): Us
         })
       }
     }
-  }, [containerRef, isRendering])
+  }, [containerRef, isRendering, sphereCameraPosition, setSphereCameraPosition])
 
   return {
     sceneRef,
@@ -231,7 +257,6 @@ export function useThreeScene(containerRef: React.RefObject<HTMLDivElement>): Us
   }
 }
 
-// Ajouter cette interface à la fin du fichier, juste avant l'export
 export interface UseThreeSceneReturn {
   sceneRef: React.MutableRefObject<THREE.Scene | null>
   rendererRef: React.MutableRefObject<THREE.WebGLRenderer | null>
