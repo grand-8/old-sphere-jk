@@ -2,7 +2,19 @@
 
 import { useEffect, useRef, useState } from "react"
 import { X } from "lucide-react"
-import ReactECharts from "echarts-for-react"
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts"
 import type { JobtrekStatistics } from "@/lib/statistics-calculator"
 
 interface StatisticsModalProps {
@@ -29,21 +41,19 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
     if (isMobile) {
       setTimeout(() => {
         onClose()
-      }, 200) // Quick fade out on mobile
+      }, 200)
     } else {
       onClose()
     }
   }
 
   useEffect(() => {
-    // Fermer le modal lorsque l'utilisateur clique en dehors
     const handleClickOutside = (event: MouseEvent) => {
       if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
         handleClose()
       }
     }
 
-    // Fermer le modal lorsque l'utilisateur appuie sur Échap
     const handleEscKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         handleClose()
@@ -61,193 +71,72 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
 
   if (!statistics) return null
 
-  const mistJobtrekChartOption = {
-    animation: true,
-    animationDuration: 2000,
-    animationEasing: "cubicOut",
-    tooltip: {
-      trigger: "item",
-      backgroundColor: "#1f2937",
-      borderColor: "#374151",
-      borderWidth: 1,
-      textStyle: { color: "#fff" },
-      formatter: (params: any) => {
-        const labels = ["Avant la mesure", "Début Jobtrek", "Impact final"]
-        if (params.dataIndex === 0) {
-          return `Avant la MISt (MISt Jobtrek)`
-        } else if (params.dataIndex === 1) {
-          return `${labels[params.dataIndex]} (MISt Jobtrek)`
-        } else {
-          const jobtrekValue = statistics?.impactCharts.mistJobtrek.jobtrekAvg
-          const progression = jobtrekValue !== 0 ? ((params.value - jobtrekValue) / jobtrekValue) * 100 : 0
-          const sign = progression > 0 ? "+" : ""
-          return `${labels[params.dataIndex]} (MISt Jobtrek)<br/>${sign}${progression.toFixed(1)}% depuis Jobtrek`
-        }
-      },
+  const mistJobtrekData = [
+    { name: "Avant", value: statistics?.impactCharts.mistJobtrek.startAvg || 0 },
+    { name: "Jobtrek", value: statistics?.impactCharts.mistJobtrek.jobtrekAvg || 0 },
+    { name: "Après", value: statistics?.impactCharts.mistJobtrek.finalAvg || 0 },
+  ]
+
+  const jobtrekSchoolData = [
+    { name: "Avant", value: statistics?.impactCharts.jobtrekSchool.startAvg || 0 },
+    { name: "Jobtrek", value: statistics?.impactCharts.jobtrekSchool.jobtrekAvg || 0 },
+    { name: "Après", value: statistics?.impactCharts.jobtrekSchool.finalAvg || 0 },
+  ]
+
+  const pieData = [
+    {
+      name: "MISt Jobtrek",
+      value: statistics.measureDistribution.mistJobtrek,
+      color: "#22c55e",
     },
-    grid: {
-      left: "10%",
-      right: "10%",
-      bottom: "15%",
-      top: "10%",
-      containLabel: true,
+    {
+      name: "JobtrekSchool",
+      value: statistics.measureDistribution.jobtrekSchool,
+      color: "#3b82f6",
     },
-    xAxis: {
-      type: "category",
-      data: ["Avant", "Jobtrek", "Après"],
-      axisLine: { lineStyle: { color: "#374151" } },
-      axisTick: { lineStyle: { color: "#374151" } },
-      axisLabel: { color: "#9ca3af", fontSize: 11 },
-    },
-    yAxis: {
-      type: "value",
-      show: true,
-      axisLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: { show: false },
-      splitLine: {
-        show: true,
-        lineStyle: { color: "#374151", type: "solid", width: 1 },
-      },
-    },
-    series: [
-      {
-        name: "MISt Jobtrek",
-        type: "line",
-        data: [
-          statistics?.impactCharts.mistJobtrek.startAvg || 0,
-          statistics?.impactCharts.mistJobtrek.jobtrekAvg || 0,
-          statistics?.impactCharts.mistJobtrek.finalAvg || 0,
-        ],
-        lineStyle: { color: "#22c55e", width: 3 },
-        itemStyle: { color: "#22c55e", borderColor: "#ffffff", borderWidth: 2 },
-        symbol: "circle",
-        symbolSize: 8,
-        showSymbol: true,
-      },
-    ],
+  ]
+
+  const CustomTooltip = ({ active, payload, label, chartType }: any) => {
+    if (active && payload && payload.length) {
+      const value = payload[0].value
+      const dataIndex =
+        chartType === "mist"
+          ? mistJobtrekData.findIndex((d) => d.name === label)
+          : jobtrekSchoolData.findIndex((d) => d.name === label)
+      const jobtrekValue =
+        chartType === "mist"
+          ? statistics?.impactCharts.mistJobtrek.jobtrekAvg
+          : statistics?.impactCharts.jobtrekSchool.jobtrekAvg
+
+      let tooltipText = ""
+      if (dataIndex === 0) {
+        tooltipText = `Avant la mesure: ${value.toFixed(2)}`
+      } else if (dataIndex === 1) {
+        tooltipText = `Début Jobtrek: ${value.toFixed(2)}`
+      } else {
+        const progression = jobtrekValue !== 0 ? ((value - jobtrekValue) / Math.abs(jobtrekValue)) * 100 : 0
+        const sign = progression > 0 ? "+" : ""
+        tooltipText = `Impact final: ${value.toFixed(2)} (${sign}${progression.toFixed(1)}% depuis Jobtrek)`
+      }
+
+      return (
+        <div className="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white text-sm">{tooltipText}</div>
+      )
+    }
+    return null
   }
 
-  const jobtrekSchoolChartOption = {
-    animation: true,
-    animationDuration: 2000,
-    animationEasing: "cubicOut",
-    tooltip: {
-      trigger: "item",
-      backgroundColor: "#1f2937",
-      borderColor: "#374151",
-      borderWidth: 1,
-      textStyle: { color: "#fff" },
-      formatter: (params: any) => {
-        const labels = ["Avant la mesure", "Début Jobtrek", "Impact final"]
-        if (params.dataIndex === 0) {
-          return `Avant la JobtrekSchool (JobtrekSchool)`
-        } else if (params.dataIndex === 1) {
-          return `${labels[params.dataIndex]} (JobtrekSchool)`
-        } else {
-          const jobtrekValue = statistics?.impactCharts.jobtrekSchool.jobtrekAvg
-          const progression = jobtrekValue !== 0 ? ((params.value - jobtrekValue) / jobtrekValue) * 100 : 0
-          const sign = progression > 0 ? "+" : ""
-          return `${labels[params.dataIndex]} (JobtrekSchool)<br/>${sign}${progression.toFixed(1)}% depuis Jobtrek`
-        }
-      },
-    },
-    grid: {
-      left: "10%",
-      right: "10%",
-      bottom: "15%",
-      top: "10%",
-      containLabel: true,
-    },
-    xAxis: {
-      type: "category",
-      data: ["Avant", "Jobtrek", "Après"],
-      axisLine: { lineStyle: { color: "#374151" } },
-      axisTick: { lineStyle: { color: "#374151" } },
-      axisLabel: { color: "#9ca3af", fontSize: 11 },
-    },
-    yAxis: {
-      type: "value",
-      show: true,
-      axisLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: { show: false },
-      splitLine: {
-        show: true,
-        lineStyle: { color: "#374151", type: "solid", width: 1 },
-      },
-    },
-    series: [
-      {
-        name: "JobtrekSchool",
-        type: "line",
-        data: [
-          statistics?.impactCharts.jobtrekSchool.startAvg || 0,
-          statistics?.impactCharts.jobtrekSchool.jobtrekAvg || 0,
-          statistics?.impactCharts.jobtrekSchool.finalAvg || 0,
-        ],
-        lineStyle: { color: "#3b82f6", width: 3 },
-        itemStyle: { color: "#3b82f6", borderColor: "#ffffff", borderWidth: 2 },
-        symbol: "circle",
-        symbolSize: 8,
-        showSymbol: true,
-      },
-    ],
-  }
-
-  const pieChartOption = {
-    tooltip: {
-      trigger: "item",
-      backgroundColor: "#1f2937",
-      borderColor: "#374151",
-      borderWidth: 1,
-      textStyle: {
-        color: "#fff",
-      },
-      formatter: "{b}: {d}%",
-    },
-    legend: {
-      orient: "horizontal",
-      bottom: "0%",
-      left: "center",
-      textStyle: {
-        color: "#d1d5db",
-        fontSize: 12,
-      },
-      itemWidth: 12,
-      itemHeight: 12,
-    },
-    series: [
-      {
-        type: "pie",
-        radius: ["40%", "70%"],
-        center: ["50%", "45%"],
-        avoidLabelOverlap: false,
-        label: {
-          show: false,
-        },
-        emphasis: {
-          label: {
-            show: false,
-          },
-        },
-        labelLine: {
-          show: false,
-        },
-        data: [
-          {
-            value: statistics.measureDistribution.mistJobtrek,
-            name: `MISt Jobtrek (${((statistics.measureDistribution.mistJobtrek / (statistics.measureDistribution.mistJobtrek + statistics.measureDistribution.jobtrekSchool)) * 100).toFixed(1)}%)`,
-            itemStyle: { color: "#22c55e" },
-          },
-          {
-            value: statistics.measureDistribution.jobtrekSchool,
-            name: `JobtrekSchool (${((statistics.measureDistribution.jobtrekSchool / (statistics.measureDistribution.mistJobtrek + statistics.measureDistribution.jobtrekSchool)) * 100).toFixed(1)}%)`,
-            itemStyle: { color: "#3b82f6" },
-          },
-        ],
-      },
-    ],
+  const PieTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const total = statistics.measureDistribution.mistJobtrek + statistics.measureDistribution.jobtrekSchool
+      const percentage = ((payload[0].value / total) * 100).toFixed(1)
+      return (
+        <div className="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white text-sm">
+          {payload[0].name}: {percentage}%
+        </div>
+      )
+    }
+    return null
   }
 
   return (
@@ -336,11 +225,27 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
                   <div className="text-white text-sm font-medium">MISt Jobtrek</div>
                 </div>
                 <div className="h-48">
-                  <ReactECharts
-                    option={mistJobtrekChartOption}
-                    style={{ height: "100%", width: "100%" }}
-                    opts={{ renderer: "svg" }}
-                  />
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={mistJobtrekData} margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fill: "#9ca3af", fontSize: 11 }}
+                        axisLine={{ stroke: "#374151" }}
+                        tickLine={{ stroke: "#374151" }}
+                      />
+                      <YAxis hide />
+                      <Tooltip content={<CustomTooltip chartType="mist" />} />
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke="#22c55e"
+                        strokeWidth={3}
+                        dot={{ fill: "#22c55e", stroke: "#ffffff", strokeWidth: 2, r: 4 }}
+                        activeDot={{ r: 6, fill: "#22c55e", stroke: "#ffffff", strokeWidth: 2 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
 
@@ -351,11 +256,27 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
                   <div className="text-white text-sm font-medium">JobtrekSchool</div>
                 </div>
                 <div className="h-48">
-                  <ReactECharts
-                    option={jobtrekSchoolChartOption}
-                    style={{ height: "100%", width: "100%" }}
-                    opts={{ renderer: "svg" }}
-                  />
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={jobtrekSchoolData} margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fill: "#9ca3af", fontSize: 11 }}
+                        axisLine={{ stroke: "#374151" }}
+                        tickLine={{ stroke: "#374151" }}
+                      />
+                      <YAxis hide />
+                      <Tooltip content={<CustomTooltip chartType="school" />} />
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke="#3b82f6"
+                        strokeWidth={3}
+                        dot={{ fill: "#3b82f6", stroke: "#ffffff", strokeWidth: 2, r: 4 }}
+                        activeDot={{ r: 6, fill: "#3b82f6", stroke: "#ffffff", strokeWidth: 2 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             </div>
@@ -366,11 +287,29 @@ export function StatisticsModal({ statistics, onClose }: StatisticsModalProps) {
             <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
               <div className="text-gray-400 text-sm mb-4">Répartition des mesures</div>
               <div className="h-48">
-                <ReactECharts
-                  option={pieChartOption}
-                  style={{ height: "100%", width: "100%" }}
-                  opts={{ renderer: "svg" }}
-                />
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="45%"
+                      innerRadius={40}
+                      outerRadius={70}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<PieTooltip />} />
+                    <Legend
+                      verticalAlign="bottom"
+                      height={36}
+                      formatter={(value) => <span className="text-gray-300 text-sm">{value}</span>}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
             </div>
 

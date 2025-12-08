@@ -1,38 +1,67 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { Buffer } from "buffer"
 
-const JOBTREK_API_CONFIG = {
-  baseUrl: "https://form.jobtrek.ch",
-  endpoint: "/api/export/trajectories",
-  username: "jobtrek_export",
-  password: "secure_password_2024",
+const getApiConfig = () => {
+  let url = process.env.JOBTREK_API_URL
+  const username = process.env.JOBTREK_API_USERNAME
+  const password = process.env.JOBTREK_API_PASSWORD
+
+  if (url && !url.startsWith("http://") && !url.startsWith("https://")) {
+    url = `https://${url}`
+  }
+
+  console.log("[v0] ENV Check:", {
+    hasUrl: !!url,
+    urlValue: url ? url.substring(0, 40) + "..." : "MISSING",
+    hasUsername: !!username,
+    usernameValue: username || "MISSING",
+    hasPassword: !!password,
+    passwordLength: password ? password.length : 0,
+    passwordPrefix: password ? password.substring(0, 4) + "..." : "MISSING",
+  })
+
+  if (!url || !username || !password) {
+    throw new Error("Missing JOBTREK_API_URL, JOBTREK_API_USERNAME, or JOBTREK_API_PASSWORD environment variables")
+  }
+
+  return {
+    baseUrl: url,
+    endpoint: "/api/export/trajectories",
+    username,
+    password,
+  }
 }
 
 async function getApiData(): Promise<Response> {
-  console.log("🌐 Mode production - Appel API Jobtrek...")
+  console.log("Mode production - Appel API Jobtrek...")
 
-  const credentials = btoa(`${JOBTREK_API_CONFIG.username}:${JOBTREK_API_CONFIG.password}`)
+  const config = getApiConfig()
 
-  const apiUrl = `${JOBTREK_API_CONFIG.baseUrl}${JOBTREK_API_CONFIG.endpoint}`
+  const credentialsString = `${config.username}:${config.password}`
+  const credentials = Buffer.from(credentialsString, "utf-8").toString("base64")
 
-  console.log(`📡 Requête vers: ${apiUrl}`)
+  const apiUrl = `${config.baseUrl}${config.endpoint}`
+
+  console.log("[v0] Full API URL:", apiUrl)
+  console.log("[v0] Auth header:", `Basic ${credentials}`)
 
   const response = await fetch(apiUrl, {
     method: "GET",
     headers: {
       Authorization: `Basic ${credentials}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "Cache-Control": "no-cache",
-      Pragma: "no-cache",
+      Accept: "*/*",
+      "User-Agent": "v0-jobtrek-client/1.0",
     },
-    signal: AbortSignal.timeout(30000),
   })
 
-  console.log(`📊 Statut de réponse: ${response.status} ${response.statusText}`)
+  console.log("[v0] Response status:", response.status, response.statusText)
+  console.log("[v0] Response headers:", Object.fromEntries(response.headers.entries()))
+
+  console.log(`Statut de réponse: ${response.status} ${response.statusText}`)
 
   if (!response.ok) {
     const errorText = await response.text()
-    console.error(`❌ Erreur API (${response.status}):`, errorText)
+    console.error(`Erreur API (${response.status}):`, errorText)
 
     return NextResponse.json(
       {
@@ -46,7 +75,7 @@ async function getApiData(): Promise<Response> {
   const contentType = response.headers.get("content-type")
   if (!contentType || !contentType.includes("application/json")) {
     const responseText = await response.text()
-    console.error("❌ Réponse non-JSON reçue:", responseText.substring(0, 200))
+    console.error("Réponse non-JSON reçue:", responseText.substring(0, 200))
 
     return NextResponse.json(
       {
@@ -60,7 +89,7 @@ async function getApiData(): Promise<Response> {
 
   const data = await response.json()
 
-  console.log(`✅ Données reçues: ${data.trajectories?.length || 0} trajectoires`)
+  console.log(`Données reçues: ${data.trajectories?.length || 0} trajectoires`)
 
   // Log a sample trajectory to see the data structure
   if (data.trajectories && data.trajectories.length > 0) {
@@ -75,7 +104,7 @@ async function getApiData(): Promise<Response> {
   }
 
   if (!data.trajectories || !Array.isArray(data.trajectories)) {
-    console.error("❌ Structure de données invalide:", data)
+    console.error("Structure de données invalide:", data)
     return NextResponse.json(
       {
         error: "Structure de données invalide",
@@ -101,7 +130,7 @@ export async function GET(request: NextRequest) {
   try {
     return await getApiData()
   } catch (error) {
-    console.error("❌ Erreur lors de l'appel API:", error)
+    console.error("Erreur lors de l'appel API:", error)
 
     if (error instanceof TypeError && error.message.includes("fetch")) {
       return NextResponse.json(
