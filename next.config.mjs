@@ -1,8 +1,8 @@
+// Next.js 16 uses Turbopack by default for both `next dev` and `next build`
+// No additional configuration needed - Turbopack is enabled automatically
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: true,
   },
